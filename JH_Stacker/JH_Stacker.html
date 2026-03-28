@@ -1,0 +1,2870 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>JH-Stacker by Julian Hernandez</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; background: #ecf0f1; }
+        #sidebar { width: 440px; background: white; overflow-y: auto; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 10; }
+        #viewer { flex-grow: 1; position: relative; }
+        
+        #viewControls { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        #viewControls button { background: white; border: 1px solid #bdc3c7; border-radius: 4px; width: 40px; height: 40px; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #2c3e50; transition: 0.2s;}
+        #viewControls button:hover { background: #ecf0f1; color: #2980b9; }
+
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        .logo-container img, .logo-container video { 
+            max-width: 80%; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            border: none; /* Quitamos el marco */
+            outline: none; /* Evita recuadros al hacer clic */
+        }
+
+        h2 { font-size: 15px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-top: 15px; }
+        .form-group { margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #34495e; flex: 1; }
+        .form-group input, .form-group select { width: 140px; padding: 5px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 12px; }
+        
+        .upload-area { background: #e8f8f5; border: 2px dashed #1abc9c; padding: 12px; text-align: center; border-radius: 6px; margin-bottom: 15px; cursor: pointer; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-area label { cursor: pointer; color: #16a085; font-weight: bold; font-size: 13px; }
+
+        .btn { width: 100%; padding: 10px; background: #2980b9; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 8px; transition: 0.3s; font-size: 13px;}
+        .btn:hover { background: #3498db; }
+        .btn-alt { background: #e67e22; }
+        .btn-alt:hover { background: #d35400; }
+        .btn-small { background: #8e44ad; width: 48%; display: inline-block; padding: 8px; margin-bottom: 10px;}
+        .btn-small:hover { background: #9b59b6; }
+        .btn-container { display: flex; justify-content: space-between; }
+
+        .toggle-container { background: #fdfefe; border: 1px solid #bdc3c7; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; font-weight: bold; color: #2c3e50; display: flex; align-items: center; gap: 10px; cursor: pointer;}
+        .toggle-container input { transform: scale(1.3); cursor: pointer; }
+
+        #results { background: #dff9fb; padding: 12px; border-radius: 4px; font-size: 13px; color: #130f40; margin-bottom: 20px; border-left: 4px solid #1abc9c; }
+
+        #optModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        #optContent { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 1000px; max-height: 90%; overflow-y: auto; }
+        .opt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .opt-header h2 { margin: 0; border: none; font-size: 20px; }
+        .close-btn { background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        .opt-controls-bar { display: flex; gap: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+        .opt-controls-bar div { flex: 1; }
+        .opt-controls-bar label { font-weight: bold; font-size: 12px; display: block; margin-bottom: 5px; color: #2c3e50; }
+        .opt-controls-bar select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; font-size: 13px; }
+
+        .pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .pattern-card { border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; cursor: pointer; transition: 0.2s; background: #fcfcfc; text-align: center; }
+        .pattern-card:hover { border-color: #27ae60; background: #eafff0; transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .pattern-canvas { width: 100%; height: 160px; background: #fff; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; }
+        .pattern-info { font-size: 13px; color: #2c3e50; line-height: 1.4; }
+        .pattern-highlight { color: #27ae60; font-weight: bold; font-size: 16px; display: block; margin-top: 5px; }
+
+        /* --- ESTILOS DE ACORDEÓN (UI MODERNA) --- */
+        .accordion-btn {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            cursor: pointer;
+            padding: 12px 15px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            outline: none;
+            transition: 0.3s;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .accordion-btn:hover { background-color: #e8f8f5; border-color: #1abc9c; color: #16a085;}
+        .accordion-btn.active { background-color: #2980b9; color: white; border-color: #2471a3; border-bottom-left-radius: 0; border-bottom-right-radius: 0;}
+        .accordion-btn::after { content: '\25BC'; font-size: 12px; transition: transform 0.3s;}
+        .accordion-btn.active::after { transform: rotate(-180deg); }
+        .accordion-content {
+            padding: 15px;
+            background-color: #fafbfc;
+            display: none;
+            border-left: 1px solid #bdc3c7;
+            border-right: 1px solid #bdc3c7;
+            border-bottom: 1px solid #bdc3c7;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            margin-bottom: 10px;
+            animation: fadein 0.3s ease-in-out;
+        }
+        .accordion-content.show { display: block; }
+        @keyframes fadein { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }    
+
+        .spark-symbol {
+          width: 24px;
+          height: 24px;
+          vertical-align: middle;
+          margin-right: 8px;
+        }
+
+        /* --- ESTILOS DEL CHAT SPARK --- */
+        #chatHistory {
+            height: 220px;
+            overflow-y: auto;
+            border: 1px solid #bdc3c7;
+            padding: 10px;
+            background: #fafbfc;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; line-height: 1.4; word-wrap: break-word; }
+        .msg-user { background: #2980b9; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-spark { background: #fff; border: 1px solid #e0e0e0; color: #2c3e50; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; gap: 8px; }
+        .spark-avatar { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
+        .msg-content { flex-grow: 1; }
+
+        /* --- ANIMACIÓN ESCRIBIENDO SPARK --- */
+        .typing-indicator { display: none; align-items: center; gap: 4px; padding: 10px 14px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; width: fit-content; border-bottom-left-radius: 2px; margin-top: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
+        .dot { width: 6px; height: 6px; background: #e67e22; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+/* --- ESTILOS PARA IMÁGENES GENERADAS DINÁMICAMENTE --- */
+        .msg-content-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: block;
+            border: 2px solid #e67e22; /* Borde naranja Spark */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }    
+
+</style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="logo-container">
+        <video id="logoVideo" autoplay loop muted playsinline>
+            <source src="logo.mp4" type="video/mp4" onerror="document.getElementById('logoVideo').style.display='none'; document.getElementById('logoImgFallback').style.display='inline-block';">
+        </video>
+        <img id="logoImgFallback" src="logo.png" alt="JH-Stacker Logo" style="display:none;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 300 100\'><rect width=\'300\' height=\'100\' fill=\'%232980b9\' rx=\'8\'/><text x=\'50%\' y=\'55%\' fill=\'white\' font-size=\'32\' font-family=\'Arial\' font-weight=\'bold\' text-anchor=\'middle\' alignment-baseline=\'middle\'>JH-STACKER</text><text x=\'50%\' y=\'80%\' fill=\'#ecf0f1\' font-size=\'12\' font-family=\'Arial\' text-anchor=\'middle\'>Falta logo.mp4 o logo.png</text></svg>'">
+    </div>
+
+    <div class="upload-area">
+        <label for="folderUpload">📁 Cargar Carpeta (Workspace)</label>
+        <input type="file" id="folderUpload" webkitdirectory directory multiple accept=".png, .jpg, .jpeg, .gif, .xlsx, .xls">
+    </div>
+    
+    <button class="accordion-btn active">🛍️ 1. Empaque Primario (Bolsa)</button>
+    <div class="accordion-content show">
+        <div class="form-group"><label>Marca:</label><select id="bagBrand" onchange="updateGramajeDropdown()"><option value="default">-- Esperando Carpeta --</option></select></div>
+        <div class="form-group"><label>Gramaje (G):</label><select id="bagGramaje" onchange="loadBagTextures()"><option value="default">-- Selecciona Marca --</option></select></div>
+        <div class="form-group"><label>Largo / Frente (mm)</label><input type="number" id="bagL" value=""></div>
+        <div class="form-group"><label>Alto Extendido (mm)</label><input type="number" id="bagH" value=""></div>
+        <div class="form-group"><label>Inflado Mín. (Origen)</label><input type="number" id="bagDMin" value=""></div>
+        <div class="form-group"><label>Inflado Máx. (Cubicaje)</label><input type="number" id="bagDMax" value=""></div>
+        <div class="form-group"><label>Peso Neto Prod. (g)</label><input type="number" id="bagNetW" value="0"></div>
+        <div class="form-group"><label>Tara Bolsa (g)</label><input type="number" id="bagTaraW" value="0"></div>
+        <div class="form-group" style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px;"><label>Sellos a Doblar (mm)</label><input type="number" id="bagFold" value=""></div>
+        <div class="form-group"><label>Compresión Largo (%)</label><input type="number" id="bagCompL" value=""></div>
+        <div class="form-group"><label>Compresión Ancho (%)</label><input type="number" id="bagCompD" value=""></div>
+    </div>
+
+    <button class="accordion-btn">📦 2. Empaque Secundario (Caja)</button>
+    <div class="accordion-content">
+        <div class="form-group" style="margin-bottom:2px;"><label>Item Corrugado:</label><select id="boxItem" onchange="loadBoxTextures()"><option value="default">-- Esperando Carpeta --</option></select></div>
+        <button onclick="suggestBestBox()" style="width: 100%; padding: 8px; background: #f1c40f; color: #2c3e50; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 15px; margin-top: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">✨ Sugerir Caja Ideal (IA)</button>
+        
+        <div class="form-group"><label>Resistencia ECT (lb/in):</label><input type="number" id="boxECT" value="32" oninput="if(typeof runOptimizationLogic === 'function') runOptimizationLogic();"></div>
+        <div class="form-group"><label>Tipo de Flauta:</label>
+            <select id="boxFlute" onchange="updateInternalDimensions()">
+                <option value="1.05">F (Simple) - 1.05mm</option>
+                <option value="1.60">E (Simple) - 1.60mm</option>
+                <option value="2.70" selected>B (Simple) - 2.70mm</option>
+                <option value="3.85">C (Simple) - 3.85mm</option>
+                <option value="2.75">F/E (Doble) - 2.75mm</option>
+                <option value="3.85">E/B (Doble) - 3.85mm</option>
+                <option value="5.75">E/C (Doble) - 5.75mm</option>
+                <option value="6.80">B/C (Doble) - 6.80mm</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Largo Ext. (mm)</label><input type="number" id="boxL" value="" oninput="updateInternalDimensions()"></div>
+        <div class="form-group"><label>Ancho Ext. (mm)</label><input type="number" id="boxW" value="" oninput="updateInternalDimensions()"></div>
+        <div class="form-group"><label>Alto Ext. (mm)</label><input type="number" id="boxH" value="" oninput="updateInternalDimensions()"></div>
+        <div class="form-group"><label>Tara Caja Vacía (g)</label><input type="number" id="boxTaraW" value="0"></div>
+        <div id="internalDimsDisplay" style="font-size: 11px; color: #16a085; text-align: center; margin-bottom: 10px; font-weight: bold; background: #e8f8f5; padding: 5px; border-radius: 4px; display: none;">Dimensiones Internas: 0 x 0 x 0 mm</div>
+        
+        <div style="background: #ffffff; border: 1px dashed #3498db; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+            <label style="font-size: 12px; font-weight: bold; color: #2980b9; display: block; margin-bottom: 5px;">🛠️ Ing. Inversa (Crear Caja Exacta)</label>
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <input type="number" id="invX" placeholder="Frente" value="3" style="width: 33%; font-size:10px;" title="Cajas a lo ancho">
+                <input type="number" id="invZ" placeholder="Fondo" value="4" style="width: 33%; font-size:10px;" title="Cajas de fondo">
+                <input type="number" id="invY" placeholder="Alto" value="2" style="width: 33%; font-size:10px;" title="Niveles de alto">
+            </div>
+            <button class="btn" style="background: #2980b9; margin: 0; padding: 6px;" onclick="generatePerfectBox()">Calcular Medidas</button>
+        </div>
+
+        <div class="form-group"><label>Tipo de Cierre:</label>
+            <select id="closureType" onchange="toggleClosure()">
+                <option value="tape">Cinta Adhesiva</option>
+                <option value="seal">Sello de Seguridad</option>
+            </select>
+        </div>
+        <div id="tapeInputs"><div class="form-group"><label>Ancho Cinta (mm)</label><input type="number" id="tapeW" value="50"></div><div class="form-group"><label>Caída Cinta (mm)</label><input type="number" id="tapeDrop" value="50"></div></div>
+        <div id="sealInputs" style="display:none;"><div class="form-group"><label>Diám. Horiz. (mm)</label><input type="number" id="sealX" value="60"></div><div class="form-group"><label>Diám. Vert. (mm)</label><input type="number" id="sealY" value="40"></div></div>
+    </div>
+
+    <button class="accordion-btn">🪵 3. Tarima y Logística</button>
+    <div class="accordion-content">
+        <div class="form-group"><label>Tipo de Tarima:</label>
+            <select id="palType" onchange="updatePallet()">
+                <option value="plastico">Plástico (1219.2 x 1016)</option>
+                <option value="madera">Madera (1200 x 1000)</option>
+                <option value="custom">Personalizado...</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Largo (mm)</label><input type="number" id="palL" value="1219.2"></div>
+        <div class="form-group"><label>Ancho (mm)</label><input type="number" id="palW" value="1016"></div>
+        <div class="form-group"><label>Alto Base (mm)</label><input type="number" id="palH" value="150"></div>
+        <div class="form-group"><label>Voladizo Máx (mm)</label><input type="number" id="palOver" value="15"></div>
+        <div class="form-group"><label>Altura Estiba Máx (mm)</label><input type="number" id="maxH" value="2464"></div>
+        
+        <div style="border-top:1px dashed #ccc; margin-top: 10px; padding-top: 10px;">
+            <label style="font-size: 12px; font-weight: bold; color: #2c3e50; display: block; margin-bottom: 5px;">Protección y Amarre</label>
+            <div class="form-group"><label>Alto Esq. Vert (mm):</label><input type="number" id="esquineroH" value="0" placeholder="Ej: 1200"></div>
+            <div class="toggle-container" style="margin-bottom: 5px;"><input type="checkbox" id="useCorona" onchange="document.getElementById('coronaHGroup').style.display = this.checked ? 'flex' : 'none';"><label for="useCorona">Corona Esquineros (Sup)</label></div>
+            <div class="form-group" id="coronaHGroup" style="display:none;"><label>Ala/Alto Corona (mm):</label><input type="number" id="coronaH" value="50"></div>
+            <div class="toggle-container" style="margin-bottom: 5px;"><input type="checkbox" id="usePlayo" checked><label for="usePlayo">Aplicar Película (Playo)</label></div>
+            <div class="toggle-container" style="margin-bottom: 5px;"><input type="checkbox" id="doubleStack"><label for="doubleStack">Doble Estiba (2 Tarimas)</label></div>
+        </div>
+
+        <div style="border-top:1px dashed #ccc; margin-top: 10px; padding-top: 10px;">
+            <label style="font-size: 12px; font-weight: bold; color: #2c3e50; display: block; margin-bottom: 5px;">Charolas y Hojas</label>
+            <div class="form-group"><label>Charola Club (Camas):</label><input type="text" id="charolaLayers" placeholder="Ej: 1,3,5"></div>
+            <div class="form-group"><label>Hoja Separadora (Camas):</label><input type="text" id="sheetLayers" placeholder="Ej: 2,4"></div>
+            <div class="form-group"><label>Material de la Hoja:</label><select id="sheetType"><option value="simple">Papel / Liner Simple</option><option value="corrugado">Cartón Corrugado</option></select></div>
+        </div>
+    </div>
+
+    <button class="accordion-btn">✈️ 4. Análisis de Riesgos y Rutas</button>
+    <div class="accordion-content">
+        <label style="font-size: 12px; font-weight: bold; color: #2980b9; display: block; margin-bottom: 5px;">Presión Atmosférica</label>
+        <div class="form-group"><label>Origen (Ciudad, País):</label><input type="text" id="altOrigenCity" placeholder="Ej: Toluca, MX" onblur="fetchAltitude('altOrigenCity', 'altOrigen')"></div>
+        <div class="form-group"><label>Altitud Origen (msnm):</label><input type="number" id="altOrigen" value="2580" readonly style="background:#f8f9fa;"></div>
+        <div class="form-group"><label>Destino (Ciudad, País):</label><input type="text" id="altDestinoCity" placeholder="Ej: Bogota, CO" onblur="fetchAltitude('altDestinoCity', 'altDestino')"></div>
+        <div class="form-group"><label>Altitud Destino (msnm):</label><input type="number" id="altDestino" value="0" readonly style="background:#f8f9fa;"></div>
+        <div class="form-group"><label>Bolsas Ancho (Z) / Largo (X)</label><div style="display:flex; gap:5px;"><input type="number" id="simBolsasZ" value="5" style="width:50%;"><input type="number" id="simFilasX" value="2" style="width:50%;"></div></div>
+        <button class="btn" style="background: #e74c3c; margin-top: 5px;" onclick="checkPressureRisk()">Simular Presión Barométrica</button>
+        <div id="pressureResult" style="font-size: 12px; margin-top: 5px; display: none; padding: 10px; border-radius: 4px;"></div>   
+
+        <label style="font-size: 12px; font-weight: bold; color: #2980b9; display: block; margin-top: 15px; margin-bottom: 5px; border-top:1px dashed #ccc; padding-top:10px;">Pruebas de Tránsito ISTA</label>
+        
+        <button class="btn" style="background: #27ae60; margin-bottom: 5px;" onclick="calculateRoute()">🗺️ Calcular Ruta y Estrés</button>
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button class="btn-small" style="background: #e67e22; flex:1; margin:0;" onclick="startTiltSim()">⚖️ Vuelco</button>
+            <button class="btn-small" style="background: #8e44ad; flex:1; margin:0;" onclick="startVibeSim()">📳 Vibración</button>
+            <button class="btn-small" style="background: #34495e; width: 40px; flex: none; padding:0; margin:0;" onclick="stopAllSims()" title="Detener Simulaciones">⏹️</button>
+        </div>
+        <div id="routeResult" style="display:none; font-size:12px; background:#e8f8f5; padding:12px; border-left:4px solid #1abc9c; border-radius: 4px;"></div>
+    </div>
+    <button class="accordion-btn" id="btnAccordionResistencias">🛡️ 5. Resistencias y BCT</button>
+    <div class="accordion-content" id="contentResistencias">
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">Evalúa el comportamiento estructural de la caja ante la compresión de la estiba y el estrés de la ruta.</div>
+        <button class="btn" style="background: #34495e; margin-bottom: 10px;" onclick="if(generatedPatterns.length > 0) renderSelectedPattern(0); else alert('Primero optimiza la tarima (Paso 6) para generar un arreglo.');">🧮 Calcular Resistencias</button>
+        <div id="bctResults" style="display:none; padding: 0; border-radius: 6px; font-size: 12px; color: #1e293b; border: none;"></div>
+    </div>
+
+    <button class="accordion-btn">👁️ 6. Visualización y Reportes</button>
+    <div class="accordion-content">
+        <div class="toggle-container" style="margin-bottom: 10px;"><input type="checkbox" id="showCotas" checked onchange="updateCotasVisibility()"><label for="showCotas">Mostrar Dimensiones (Cotas)</label></div>
+        <div class="form-group" style="background: #e8f8f5; padding: 8px; border-radius: 4px; border: 1px solid #1abc9c;"><label style="color: #16a085;">Estilo de Caja:</label><select id="boxViewType" style="width: 120px;"><option value="top">Abierta Sup.</option><option value="diagonal">Transparente</option></select></div>
+        <div class="btn-container" style="margin-top:10px;">
+            <button class="btn btn-small" onclick="buildSingleBag()">👁️ Ver Bolsa</button>
+            <button class="btn btn-small" onclick="buildSingleBox()">📦 Ver Caja</button>
+        </div>
+        <button class="btn" onclick="buildBagsInBox()">Visualizar: Bolsas en Caja</button>
+        <button class="btn btn-alt" style="font-size: 15px; padding: 12px; box-shadow: 0 4px 6px rgba(230, 126, 34, 0.3);" onclick="openOptimizationModal()">🎯 OPTIMIZAR TARIMA</button>
+    </div>
+</div>
+
+<div id="viewer">
+    <div id="viewControls">
+        <button onclick="takeScreenshot()" title="Tomar Captura">📷</button>
+        <button onclick="zoomIn()" title="Acercar">➕</button>
+        <button onclick="zoomOut()" title="Alejar">➖</button>
+        <button onclick="resetView()" title="Centrar Vista Completa">🏠</button>
+        <button onclick="panUp()" title="Mover Arriba">⬆️</button>
+        <button onclick="panDown()" title="Mover Abajo">⬇️</button>
+        <button onclick="panLeft()" title="Mover Izquierda">⬅️</button>
+        <button onclick="panRight()" title="Mover Derecha">➡️</button>
+    </div>
+</div>
+
+<div id="optModal">
+    <div id="optContent">
+        <div class="opt-header">
+            <h2>Configuración y Patrones de Estiba</h2>
+            <button class="close-btn" onclick="document.getElementById('optModal').style.display='none'">Cerrar</button>
+        </div>
+        <div class="opt-controls-bar">
+            <div>
+                <label>Orientación de Caja (Vertical):</label>
+                <select id="optOri" onchange="runOptimizationLogic()">
+                    <option value="ALL">Mejor Opción Automática</option>
+                    <option value="Z">Caja Parada (Z = Alto original)</option>
+                    <option value="X">Acostada Lado (X = Largo original)</option>
+                    <option value="Y">Acostada Frente (Y = Ancho original)</option>
+                </select>
+            </div>
+            <div>
+                <label>Arreglo de Camas (Layers):</label>
+                <select id="optLayers" onchange="runOptimizationLogic()">
+                    <option value="aligned" selected>Alineadas (Estiba de Columna)</option>
+                    <option value="alternated">Alternativas (Entrelazadas 180°)</option>
+                </select>
+            </div>
+        </div>
+        <div class="pattern-grid" id="patternGrid"></div>
+    </div>
+</div>
+
+<div id="sparkWidget" style="position: fixed; bottom: 20px; left: 20px; z-index: 1000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <div id="sparkChatPanel" style="display: none; position: absolute; bottom: 70px; left: 0; width: 340px; background: white; border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); border: 2px solid #e67e22; flex-direction: column; overflow: hidden;">
+        
+        <div onclick="toggleSparkChat()" style="background: #e67e22; color: white; padding: 12px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="spark-icon.png" style="width:24px; height:24px; border-radius:50%; object-fit: cover; border: 1px solid white;"> Spark IA
+            </div>
+            <span style="font-size: 18px;">&times;</span>
+        </div>
+
+        <div id="chatHistory" style="height: 280px; overflow-y: auto; padding: 15px; background: #fafbfc; display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+            <div class="chat-msg msg-spark">
+                <img src="spark-icon.png" class="spark-avatar">
+                <div class="msg-content">¡Hola! Soy Spark 🔥. Haz clic aquí abajo y dime qué necesitas optimizar.</div>
+            </div>
+            <div id="typingIndicator" class="typing-indicator">
+                <img src="spark-icon.png" class="spark-avatar" style="width:20px; height:20px; margin-right:6px;">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+        </div>
+
+        <div style="display: flex; padding: 10px; border-top: 1px solid #eee; background: #fff; gap: 5px;">
+            <input type="text" id="aiCommand" placeholder="Pregúntale a Spark..." style="flex: 1; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 12px; outline: none;">
+            <button onclick="executeAICommand()" style="background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; padding: 0 15px; font-weight: bold; transition: 0.2s;">Ir</button>
+        </div>
+    </div>
+
+    <button id="sparkButton" onclick="toggleSparkChat()" style="width: 60px; height: 60px; border-radius: 50%; background: #e67e22; cursor: pointer; box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4); display: flex; align-items: center; justify-content: center; border: 3px solid white; transition: transform 0.2s; outline: none;">
+        <img src="spark-icon.png" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
+    </button>
+</div>
+
+<script>
+    let generatedPatterns = [];
+    let imageDB = { marcas: {}, corrugados: {} };
+    let textures = { bag: { front: null, back: null }, box: { top: null, bottom: null, front: null, back: null, left: null, right: null } };
+    let textureLoader = new THREE.TextureLoader();
+    let dimensionData = { bolsas: [], corrugado: [], pallet: [] }; 
+    let currentBoxView = 'top'; 
+
+    let aiState = { waitingForBox: false, waitingForCorrection: false, suggestedECT: null }; 
+
+    // --- NUEVO: BASE DE DATOS DE IMÁGENES SIMULADAS DE SPARK (.png) ---
+    const aiGeneratedImagery = {
+        'welcome': 'spark_welcome.png',
+        'calculating': 'spark_calculating.png',
+        'warning': 'spark_warning.png',
+        'success': 'spark_success.png'
+    };
+
+    // --- LÓGICA PARA LOS MENÚS ACORDEÓN ---
+    document.addEventListener("DOMContentLoaded", function() {
+        var accordions = document.getElementsByClassName("accordion-btn");
+        for (var i = 0; i < accordions.length; i++) {
+            accordions[i].addEventListener("click", function() {
+                // Alternar la clase 'active' para cambiar color y flecha
+                this.classList.toggle("active");
+                
+                // Mostrar u ocultar el panel siguiente
+                var panel = this.nextElementSibling;
+                if (panel.classList.contains("show")) {
+                    panel.classList.remove("show");
+                } else {
+                    panel.classList.add("show");
+                }
+            });
+        }
+        // Escuchar tecla ENTER en el input del Spark
+        document.getElementById('aiCommand').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                executeAICommand();
+            }
+        });
+    });
+
+    // ==========================================
+    // 🧠 MOTOR DE INTELIGENCIA ARTIFICIAL (SPARK  2.0)
+    // ==========================================
+    // --- FUNCIÓN PARA AGREGAR MENSAJES AL CHAT ---
+    // --- FUNCIÓN PARA AGREGAR MENSAJES O IMÁGENES AL CHAT ---
+    function addChatMessage(sender, text, isGeneratedImage = false) {
+        const chatHistory = document.getElementById('chatHistory');
+        const msgDiv = document.createElement('div');
+        
+        if (sender === 'user') {
+            msgDiv.className = 'chat-msg msg-user';
+            msgDiv.innerText = text;
+        } else {
+            msgDiv.className = 'chat-msg msg-spark';
+            let avatarHtml = `<img src="spark-icon.png" class="spark-avatar" style="background:white;">`;
+            
+            if (isGeneratedImage) {
+                // Si es imagen generada, inyecta la etiqueta <img>
+                msgDiv.innerHTML = `${avatarHtml}<div class="msg-content">Aquí tienes tu imagen:<br><img src="${text}" class="msg-content-image" alt="Generando..." onerror="this.onerror=null; this.alt='❌ Error: No se encontró la imagen ${text} en la carpeta';"></div>`;
+            } else {
+                msgDiv.innerHTML = `${avatarHtml}<div class="msg-content">${text}</div>`;
+            }
+        }
+        chatHistory.appendChild(msgDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll al fondo
+    }
+
+    function showSparkTyping() {
+        const chat = document.getElementById('chatHistory');
+        const indicator = document.getElementById('typingIndicator');
+        chat.appendChild(indicator); // Mueve el indicador siempre al fondo
+        indicator.style.display = 'flex';
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideSparkTyping() {
+        document.getElementById('typingIndicator').style.display = 'none';
+    }
+
+    // --- FUNCIÓN PARA ABRIR/CERRAR EL WIDGET ---
+    function toggleSparkChat() {
+        const panel = document.getElementById('sparkChatPanel');
+        const isHidden = panel.style.display === 'none' || panel.style.display === '';
+        panel.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden) {
+            document.getElementById('aiCommand').focus(); // Pone el cursor automático al abrir
+        }
+    }
+
+function executeAICommand() {
+        const inputEl = document.getElementById('aiCommand');
+        const text = inputEl.value.toLowerCase().trim();
+        if(!text) return;
+
+        addChatMessage('user', inputEl.value); 
+        let acted = false;
+
+        // --- DETECCIÓN DE INTENCIÓN: GENERAR IMAGEN "TIPO IA" ---
+        if (text.includes('genera imagen') || text.includes('muéstrame') || text.includes('dibuja')) {
+            showSparkTyping();
+            
+            let targetImageKey = 'welcome'; // Por defecto
+            
+            if (text.includes('peligro') || text.includes('asustado') || text.includes('error') || text.includes('falla')) {
+                targetImageKey = 'warning';
+            } else if (text.includes('calculando') || text.includes('optimiza') || text.includes('pensando')) {
+                targetImageKey = 'calculating';
+            } else if (text.includes('éxito') || text.includes('feliz') || text.includes('perfecto')) {
+                targetImageKey = 'success';
+            }
+
+            const imageUrl = aiGeneratedImagery[targetImageKey];
+
+            // Simular retardo de generación (3 segundos)
+            setTimeout(() => {
+                hideSparkTyping();
+                addChatMessage('spark', imageUrl, true); // 'true' activa el renderizado de la imagen
+            }, 3000);
+            
+            inputEl.value = "";
+            return; // Detiene la ejecución aquí para no lanzar otros comandos
+        }
+
+        // 1. Manejo de respuestas interactivas: Auto-Corrección
+        if (aiState.waitingForCorrection && (text.includes('si') || text.includes('sí') || text.includes('arregla') || text.includes('ok') || text.includes('corrige'))) {
+            showSparkTyping();
+            setTimeout(() => {
+                document.getElementById('boxECT').value = aiState.suggestedECT; 
+                runOptimizationLogic(); 
+                
+                hideSparkTyping();
+                addChatMessage('spark', `🛠️ ¡Hecho! He reforzado el corrugado a <b>${aiState.suggestedECT} ECT</b>.<br>Tu carga ahora llegará a salvo.`);
+            }, 1200);
+            
+            aiState.waitingForCorrection = false;
+            aiState.suggestedECT = null;
+            inputEl.value = "";
+            return;
+        }
+
+        // 2. Manejo de respuestas interactivas: Sugerencia de Caja ("Sí")
+        if (aiState.waitingForBox && (text === 'si' || text === 'sí' || text === 'ok' || text.includes('sugiere') || text.includes('caja'))) {
+            showSparkTyping();
+            setTimeout(() => { 
+                if(typeof suggestBestBox === 'function') suggestBestBox(); 
+                hideSparkTyping();
+            }, 1000); 
+            aiState.waitingForBox = false;
+            inputEl.value = "";
+            return; 
+        }
+
+        aiState.waitingForBox = false; 
+        aiState.waitingForCorrection = false;
+
+        // 3. Intención: Sugerir Caja Directamente
+        if (text.includes('mejor caja') || text.includes('caja ideal') || text.includes('sugiere caja')) {
+            showSparkTyping();
+            setTimeout(() => { if(typeof suggestBestBox === 'function') suggestBestBox(); hideSparkTyping(); }, 800);
+            inputEl.value = "";
+            return;
+        }
+
+        // 4. Intención: Ingeniería Inversa
+        if (text.includes('inversa') || text.includes('caja perfecta') || text.includes('caja exacta')) {
+            showSparkTyping();
+            setTimeout(() => {
+                generatePerfectBox();
+                hideSparkTyping();
+            }, 800);
+            acted = true;
+            inputEl.value = "";
+            return; 
+        }
+
+        // 5. Intención: Calcular Rutas y Riesgos
+        if (text.includes('ruta') || text.includes('viaje') || text.includes('enviar a')) {
+            let destMatch = text.match(/(?:a|hacia|destino)\s+([a-záéíóúñ\s]+)/i);
+            showSparkTyping();
+            if(destMatch && destMatch[1]) {
+                document.getElementById('altDestinoCity').value = destMatch[1].trim();
+                fetchAltitude('altDestinoCity', 'altDestino');
+                
+                setTimeout(() => { 
+                    hideSparkTyping();
+                    addChatMessage('spark', `Preparando logística hacia ${destMatch[1].trim().toUpperCase()}...`);
+                    calculateRoute(); 
+                }, 1500); 
+            } else {
+                setTimeout(() => {
+                    hideSparkTyping();
+                    addChatMessage('spark', `Ejecutando análisis de ruta con los datos actuales...`);
+                    calculateRoute();
+                }, 800);
+            }
+            acted = true;
+            inputEl.value = "";
+            return;
+        }
+
+        // 6. Intención: Optimizar Tarima
+        if (text.includes('optimiza') || text.includes('estiba') || text.includes('tarima') || text.includes('palet')) {
+            if (text.includes('madera')) { document.getElementById('palType').value = 'madera'; updatePallet(); }
+            else if (text.includes('plastico') || text.includes('plástico')) { document.getElementById('palType').value = 'plastico'; updatePallet(); }
+            
+            showSparkTyping();
+            setTimeout(() => {
+                openOptimizationModal();
+                hideSparkTyping();
+                addChatMessage('spark', `Abriendo el algoritmo de estiba para tarima de ${document.getElementById('palType').options[document.getElementById('palType').selectedIndex].text}.`);
+            }, 600);
+            acted = true;
+            inputEl.value = "";
+            return;
+        }
+
+        // 7. Intención: Empaque Primario (Búsqueda de Marca y Gramaje)
+        if (!acted || text.includes('empaca') || text.includes('prepara')) {
+            let foundBrand = null, foundGramaje = null;
+            const bagSelect = document.getElementById('bagBrand');
+
+            for(let i=0; i<bagSelect.options.length; i++) {
+                let brand = bagSelect.options[i].value.toLowerCase();
+                if(brand !== 'default' && text.includes(brand)) {
+                    bagSelect.selectedIndex = i;
+                    foundBrand = bagSelect.options[i].value;
+                    updateGramajeDropdown(); 
+                    break;
+                }
+            }
+
+            if(foundBrand) {
+                const gramajeSelect = document.getElementById('bagGramaje');
+                const numbers = text.match(/\d+/g);
+                if(numbers) {
+                    for(let num of numbers) {
+                        for(let i=0; i<gramajeSelect.options.length; i++) {
+                            if(gramajeSelect.options[i].value === num) {
+                                gramajeSelect.selectedIndex = i;
+                                foundGramaje = num;
+                                loadBagTextures(); 
+                                break;
+                            }
+                        }
+                        if(foundGramaje) break;
+                    }
+                }
+                showSparkTyping();
+                setTimeout(() => {
+                    hideSparkTyping();
+                    addChatMessage('spark', `Listo. Preparé modelo 3D de <b>${foundBrand}</b> (${foundGramaje ? foundGramaje+'g' : 'gramaje genérico'}).<br>👉 <i>¿Quieres que sugiera la caja ideal? (Responde "Sí")</i>`);
+                    aiState.waitingForBox = true;
+                }, 800);
+                
+                acted = true;
+            } else if (!acted) {
+                showSparkTyping();
+                setTimeout(() => {
+                    hideSparkTyping();
+                    addChatMessage('spark', `No entendí el comando. Prueba con algo como:<br>
+                    • <i>"Empaca Takis 280g"</i><br>
+                    • <i>"Calcula ruta a Bogotá"</i><br>
+                    • <i>"Haz la caja perfecta"</i>`);
+                }, 800);
+            }
+        }
+        inputEl.value = ""; 
+    }    
+
+    const tapeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }); 
+    const plasticPalletMat = new THREE.MeshLambertMaterial({ color: 0xffffff}); 
+
+    function createKraftTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ad8762'; 
+        ctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 5000; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+        }
+        return new THREE.CanvasTexture(canvas);
+    }
+    const kraftTex = createKraftTexture();
+
+    // --- MATERIAL CHAROLA BARCEL ---
+    function createBarcelTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; 
+        ctx.fillRect(0, 0, 512, 128);
+        ctx.fillStyle = '#e74c3c'; 
+        ctx.font = "Bold 80px Arial";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("BARCEL", 256, 64);
+        return new THREE.CanvasTexture(canvas);
+    }
+    const barcelMat = new THREE.MeshLambertMaterial({ map: createBarcelTexture() });
+
+    const defaultBagMat = new THREE.MeshStandardMaterial({ 
+        color: 0xD3D3D3,   
+        metalness: 0.7,    
+        roughness: 0.4     
+    });
+    const defaultBoxMat = new THREE.MeshLambertMaterial({ map: kraftTex }); 
+
+// --- TEXTURA PLAYO ACTUALIZADA ---
+function createPlayoTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 1024);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'; 
+    ctx.lineWidth = 60; 
+    
+    ctx.beginPath();
+    const step = 240; 
+    for (let i = -1024; i < 2048; i += step) {
+        ctx.moveTo(i, 1024);
+        ctx.lineTo(i + 1024, 0);
+    }
+    ctx.stroke();
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; 
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 3);
+    return tex;
+}
+const playoTex = createPlayoTexture(); 
+
+    document.getElementById('folderUpload').addEventListener('change', async function(e) {
+        const files = e.target.files;
+        imageDB.marcas = {}; imageDB.corrugados = {};
+        dimensionData = { bolsas: [], corrugado: [], pallet: [] }; 
+        
+        for(let file of files) {
+            const parts = file.webkitRelativePath.split('/');
+            
+            if(file.name.toLowerCase().includes('dimensiones') && file.name.endsWith('.xlsx')) {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                const sheetNames = workbook.SheetNames.map(s => s.toUpperCase());
+                const sheetBolsas = workbook.SheetNames[sheetNames.indexOf('BOLSAS')];
+                const indexCorrugados = sheetNames.indexOf('CORRUGADOS') !== -1 ? sheetNames.indexOf('CORRUGADOS') : sheetNames.indexOf('CORRUGADO');
+                const sheetCorrugado = workbook.SheetNames[indexCorrugados];
+                const sheetPallet = workbook.SheetNames[sheetNames.indexOf('PALLET')];
+                
+                if(sheetBolsas) dimensionData.bolsas = XLSX.utils.sheet_to_json(workbook.Sheets[sheetBolsas]);
+                if(sheetCorrugado) dimensionData.corrugado = XLSX.utils.sheet_to_json(workbook.Sheets[sheetCorrugado]);
+                if(sheetPallet) dimensionData.pallet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetPallet]);
+                
+                if(dimensionData.pallet.length > 0) {
+                    const p = dimensionData.pallet[0];
+                    if(p.LARGO) document.getElementById('palL').value = p.LARGO;
+                    if(p.ANCHO) document.getElementById('palW').value = p.ANCHO;
+                    if(p.ALTO) document.getElementById('palH').value = p.ALTO;
+                }
+            }
+
+            if(parts.includes('marcas') && parts.length >= 3) {
+                const brand = parts[parts.indexOf('marcas')+1];
+                let filename = parts[parts.length-1].toLowerCase().split('.')[0]; 
+                if(!imageDB.marcas[brand]) imageDB.marcas[brand] = {};
+                imageDB.marcas[brand][filename] = URL.createObjectURL(file);
+            } else if(parts.includes('corrugados') && parts.length >= 3) {
+                const item = parts[parts.indexOf('corrugados')+1];
+                let filename = parts[parts.length-1].toLowerCase().split('.')[0];
+                if(!imageDB.corrugados[item]) imageDB.corrugados[item] = {};
+                imageDB.corrugados[item][filename] = URL.createObjectURL(file);
+            }
+        }
+        updateDropdowns();
+    });
+
+    function updateDropdowns() {
+        const bagSelect = document.getElementById('bagBrand'); 
+        bagSelect.innerHTML = '<option value="default">-- Seleccionar Marca --</option>';
+        
+        let bagBrands = new Set();
+        if(dimensionData.bolsas) {
+            dimensionData.bolsas.forEach(b => { if(b.Marca) bagBrands.add(String(b.Marca)); });
+        }
+        for(let b in imageDB.marcas) bagBrands.add(b);
+        bagBrands.forEach(b => { bagSelect.innerHTML += `<option value="${b}">${b}</option>`; });
+        
+        document.getElementById('bagGramaje').innerHTML = '<option value="default">-- Selecciona Marca --</option>';
+
+        const boxSelect = document.getElementById('boxItem'); 
+        boxSelect.innerHTML = '<option value="default">-- Seleccionar Item --</option>';
+        
+        let boxItems = new Set();
+        if(dimensionData.corrugado) {
+            dimensionData.corrugado.forEach(c => { 
+                if(c.Item) boxItems.add(String(c.Item)); 
+                else if(c.Tamaño) boxItems.add(String(c.Tamaño));
+            });
+        }
+        for(let i in imageDB.corrugados) boxItems.add(i);
+        
+        boxItems.forEach(i => { boxSelect.innerHTML += `<option value="${i}">${i}</option>`; });
+    }
+
+    function updateGramajeDropdown() {
+        const brand = document.getElementById('bagBrand').value;
+        const gramajeSelect = document.getElementById('bagGramaje');
+        gramajeSelect.innerHTML = '<option value="default">-- Seleccionar Gramaje --</option>';
+        
+        if(brand !== 'default') {
+            let gramajes = new Set();
+            if(dimensionData.bolsas) {
+                dimensionData.bolsas.forEach(b => {
+                    if(String(b.Marca) === brand && b.Gramaje) {
+                        gramajes.add(String(b.Gramaje));
+                    }
+                });
+            }
+            if(gramajes.size === 0) {
+                gramajeSelect.innerHTML += `<option value="N/A">N/A (Solo Imagen)</option>`;
+            } else {
+                gramajes.forEach(g => { gramajeSelect.innerHTML += `<option value="${g}">${g}</option>`; });
+            }
+        }
+        loadBagTextures();
+    }
+
+    function getBoxTextureMat(url) {
+        if (!url) return defaultBoxMat;
+        const tex = textureLoader.load(url);
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        return new THREE.MeshLambertMaterial({ map: tex, transparent: true }); 
+    }
+
+    function loadBagTextures() {
+        const brand = document.getElementById('bagBrand').value;
+        const gramaje = document.getElementById('bagGramaje').value;
+        
+        document.getElementById('bagL').value = "";
+        document.getElementById('bagDMin').value = ""; document.getElementById('bagDMax').value = "";
+        document.getElementById('bagH').value = "";
+
+        if(brand !== 'default') {
+            if(imageDB.marcas[brand]) {
+                const db = imageDB.marcas[brand];
+                textures.bag.front = db.frente ? textureLoader.load(db.frente) : null;
+                textures.bag.back = db.reverso ? textureLoader.load(db.reverso) : null;
+            } else {
+                textures.bag.front = null;
+                textures.bag.back = null;
+            }
+
+            if(gramaje !== 'default' && gramaje !== 'N/A') {
+                const bagInfo = dimensionData.bolsas.find(b => String(b.Marca) === brand && String(b.Gramaje) === gramaje);
+                if(bagInfo) {
+                    if(bagInfo.Largo) document.getElementById('bagL').value = bagInfo.Largo;
+                    if(bagInfo.Altura) document.getElementById('bagH').value = bagInfo.Altura;
+                    if(bagInfo['Nivel de Inflado']) {
+                        document.getElementById('bagDMin').value = bagInfo['Nivel de Inflado'];
+                        document.getElementById('bagDMax').value = bagInfo['Nivel de Inflado'] * 1.1; 
+                    }
+                }
+            }
+            if(document.getElementById('bagL').value !== "") buildSingleBag();
+        } else {
+            textures.bag.front = null;
+            textures.bag.back = null;
+        }
+    }
+
+    function loadBoxTextures() {
+        const item = document.getElementById('boxItem').value;
+        
+        document.getElementById('boxL').value = "";
+        document.getElementById('boxW').value = "";
+        document.getElementById('boxH').value = "";
+        document.getElementById('internalDimsDisplay').style.display = 'none';
+
+        if(item !== 'default') {
+            if(imageDB.corrugados[item]) {
+                const d = imageDB.corrugados[item];
+                textures.box.top = getBoxTextureMat(d.arriba);
+                textures.box.bottom = getBoxTextureMat(d.abajo);
+                textures.box.front = getBoxTextureMat(d.frente);
+                textures.box.back = getBoxTextureMat(d.atras);
+                textures.box.left = getBoxTextureMat(d.izq);
+                textures.box.right = getBoxTextureMat(d.der);
+            } else {
+                for(let key in textures.box) textures.box[key] = defaultBoxMat;
+            }
+            
+            const boxInfo = dimensionData.corrugado.find(c => String(c.Item) === item || String(c.Tamaño) === item);
+            if(boxInfo) {
+                if(boxInfo.Largo) document.getElementById('boxL').value = boxInfo.Largo;
+                if(boxInfo.Ancho) document.getElementById('boxW').value = boxInfo.Ancho;
+                if(boxInfo.Alto) document.getElementById('boxH').value = boxInfo.Alto;
+                
+                if(boxInfo.Flauta) {
+                    const flautaSelect = document.getElementById('boxFlute');
+                    const flautaBuscada = String(boxInfo.Flauta).toUpperCase().trim();
+                    
+                    for (let i = 0; i < flautaSelect.options.length; i++) {
+                        if (flautaSelect.options[i].text.includes(flautaBuscada + " (")) {
+                            flautaSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            updateInternalDimensions();
+            if(document.getElementById('boxL').value !== "") buildSingleBox();
+        } else {
+            for(let key in textures.box) textures.box[key] = defaultBoxMat;
+        }
+    }
+
+    function updateInternalDimensions() {
+        const extL = parseFloat(document.getElementById('boxL').value);
+        const extW = parseFloat(document.getElementById('boxW').value);
+        const extH = parseFloat(document.getElementById('boxH').value);
+        const fluteT = parseFloat(document.getElementById('boxFlute').value);
+        
+        const display = document.getElementById('internalDimsDisplay');
+
+        if (!isNaN(extL) && !isNaN(extW) && !isNaN(extH) && !isNaN(fluteT)) {
+            const intL = extL - (2 * fluteT);
+            const intW = extW - (2 * fluteT);
+            const intH = extH - (4 * fluteT);
+            
+            display.innerHTML = `Medidas Internas: ${intL.toFixed(1)} x ${intW.toFixed(1)} x ${intH.toFixed(1)} mm`;
+            display.style.display = 'block';
+        } else {
+            display.style.display = 'none';
+        }
+    }
+
+    function updatePallet() {
+        const type = document.getElementById('palType').value;
+        if(type === 'madera') {
+            document.getElementById('palL').value = 1200; 
+            document.getElementById('palW').value = 1000; 
+            document.getElementById('palH').value = 150;
+        } else if(type === 'plastico') {
+            document.getElementById('palL').value = 1219.2; 
+            document.getElementById('palW').value = 1016;   
+            document.getElementById('palH').value = 150;
+        } else {
+            document.getElementById('palL').value = "";
+            document.getElementById('palW').value = "";
+            document.getElementById('palH').value = "";
+        }
+    }
+
+
+    // ==========================================
+    // 🟢 INICIALIZACIÓN DEL MOTOR THREE.JS
+    // ==========================================
+    const container = document.getElementById('viewer');
+    const scene = new THREE.Scene(); 
+    scene.background = new THREE.Color(0xffffff); 
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 20000); 
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); 
+    renderer.setSize(container.clientWidth, container.clientHeight); 
+    container.appendChild(renderer.domElement);
+    
+    // --- CONTROLES DE CÁMARA LIBRES ---
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enablePan = true;
+    controls.screenSpacePanning = true; 
+    controls.panSpeed = 1.5;            
+    controls.listenToKeyEvents(window); 
+    
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5); 
+    dirLight.position.set(500, 1500, 500); 
+    scene.add(dirLight);   
+
+    // Grupos Principales
+    let group = new THREE.Group(); 
+    let cotasGroup = new THREE.Group(); 
+    scene.add(group); 
+    group.add(cotasGroup);
+
+    let homeCamPos = new THREE.Vector3(1500, 1500, 1500);
+    let homeCamTarget = new THREE.Vector3(0,0,0);
+
+    // Ajustar el tamaño si la ventana cambia
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // Generar una vista inicial vacía/limpia para que el Canvas arranque
+    resetView();
+    animate();
+    function takeScreenshot() {
+        renderer.render(scene, camera);
+        const link = document.createElement('a');
+        link.download = 'Captura-JH-Stacker.png';
+        link.href = renderer.domElement.toDataURL('image/png');
+        link.click();
+    }
+
+    function saveHomeView(camPos, targetPos) {
+        homeCamPos.copy(camPos);
+        homeCamTarget.copy(targetPos);
+        resetView();
+    }
+
+    function zoomIn() { 
+        const dist = camera.position.distanceTo(controls.target);
+        if (dist > 50) {
+            const dir = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
+            camera.position.add(dir.multiplyScalar(dist * 0.2));
+            controls.update(); 
+        }
+    }
+    function zoomOut() { 
+        const dist = camera.position.distanceTo(controls.target);
+        const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+        camera.position.add(dir.multiplyScalar(dist * 0.25));
+        controls.update(); 
+    }
+    function resetView() { 
+        camera.position.copy(homeCamPos);
+        controls.target.copy(homeCamTarget);
+        controls.update(); 
+    }
+
+    // --- FUNCIONES DE DESPLAZAMIENTO (PANEO) ---
+    function panDirection(x, y) {
+        const panAmount = 150;
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+        const up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+        
+        right.multiplyScalar(x * panAmount);
+        up.multiplyScalar(y * panAmount);
+        
+        camera.position.add(right).add(up);
+        controls.target.add(right).add(up);
+        controls.update(); 
+    }
+
+    function panUp() { panDirection(0, 1); }
+    function panDown() { panDirection(0, -1); }
+    function panLeft() { panDirection(-1, 0); }
+    function panRight() { panDirection(1, 0); }
+
+    
+
+    function updateCotasVisibility() {
+        if(cotasGroup) cotasGroup.visible = document.getElementById('showCotas').checked;
+    }
+
+    function resetScene() {
+        if(typeof stopAllSims === 'function') stopAllSims(); // ⏹️ Detener animaciones antes de limpiar
+        scene.remove(group); 
+        group = new THREE.Group(); 
+        
+        // Resetear transformaciones físicas del grupo
+        group.rotation.set(0,0,0);
+        group.position.set(0,0,0);
+
+        cotasGroup = new THREE.Group(); 
+        group.add(cotasGroup);
+        scene.add(group);
+        updateCotasVisibility();
+    }
+
+    // --- COTAS TEXTO ---
+    function makeTextSprite(message, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 200;
+        const ctx = canvas.getContext('2d'); 
+        
+        ctx.font = "400 80px Arial"; 
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = color; 
+        ctx.fillText(message, 200, 100);
+
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+        sprite.userData = { isCota: true, baseSX: 1.4, baseSY: 0.7 }; 
+        sprite.renderOrder = 10; 
+        return sprite;
+    }
+    
+    // --- COTAS TRAZO ---
+    function drawCota(p1, p2, text, color, offsetAxis, offsetVal) {
+        const p1Off = new THREE.Vector3().copy(p1); const p2Off = new THREE.Vector3().copy(p2);
+        p1Off[offsetAxis] += offsetVal; p2Off[offsetAxis] += offsetVal;
+        
+        const p1Ext = new THREE.Vector3().copy(p1Off); p1Ext[offsetAxis] += Math.sign(offsetVal) * 20;
+        const p2Ext = new THREE.Vector3().copy(p2Off); p2Ext[offsetAxis] += Math.sign(offsetVal) * 20;
+
+        const mat = new THREE.LineBasicMaterial({ color: color, depthTest: false, linewidth: 2 });
+        const mid = new THREE.Vector3().addVectors(p1Off, p2Off).multiplyScalar(0.5);
+        const dir = new THREE.Vector3().subVectors(p2Off, p1Off).normalize();
+        
+        const gap = 80; 
+        const gapVector = dir.multiplyScalar(gap);
+        const pMid1 = new THREE.Vector3().copy(mid).sub(gapVector);
+        const pMid2 = new THREE.Vector3().copy(mid).add(gapVector);
+
+        cotasGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p1Ext]), mat));
+        cotasGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p2, p2Ext]), mat));
+        
+        cotasGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1Off, pMid1]), mat));
+        cotasGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pMid2, p2Off]), mat));
+        
+        const sprite = makeTextSprite(text, color);
+        sprite.position.copy(mid);
+        cotasGroup.add(sprite);
+    }
+
+    // --- NUEVO PALLET DE MADERA GRIS DETALLADO ---
+    function createWoodenPallet(pL, pH, pW, colorHex) {
+        const palGroup = new THREE.Group();
+        const woodMat = new THREE.MeshLambertMaterial({ color: colorHex });
+
+        const boardThickness = 20;
+        const topBoardW = 100;
+        for(let i=0; i<7; i++) {
+            const zPos = -pW/2 + topBoardW/2 + i * ((pW - topBoardW) / 6);
+            const board = new THREE.Mesh(new THREE.BoxGeometry(pL, boardThickness, topBoardW), woodMat);
+            board.position.set(0, pH - boardThickness/2, zPos);
+            palGroup.add(board);
+        }
+
+        const stringerW = 50;
+        const stringerH = pH - (boardThickness * 2);
+        for(let i=0; i<3; i++) {
+            const xPos = -pL/2 + stringerW/2 + i * ((pL - stringerW) / 2);
+            const stringer = new THREE.Mesh(new THREE.BoxGeometry(stringerW, stringerH, pW), woodMat);
+            stringer.position.set(xPos, boardThickness + stringerH/2, 0);
+            palGroup.add(stringer);
+        }
+
+        for(let i=0; i<3; i++) {
+            const xPos = -pL/2 + stringerW/2 + i * ((pL - stringerW) / 2);
+            const botBoard = new THREE.Mesh(new THREE.BoxGeometry(stringerW, boardThickness, pW), woodMat); 
+            botBoard.position.set(xPos, boardThickness/2, 0);
+            palGroup.add(botBoard);
+        }
+        return palGroup;
+    }
+
+    function createPlasticPallet(pL, pH, pW) {
+        const palGroup = new THREE.Group();
+        const darkPlastic = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const deckH = 25;
+        const topY = pH - (deckH / 2);
+        
+        palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(pL, deckH, 20).translate(0, topY, pW/2 - 10), darkPlastic));
+        palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(pL, deckH, 20).translate(0, topY, -pW/2 + 10), darkPlastic));
+        palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(20, deckH, pW).translate(pL/2 - 10, topY, 0), darkPlastic));
+        palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(20, deckH, pW).translate(-pL/2 + 10, topY, 0), darkPlastic));
+        
+        for(let i=1; i<5; i++) {
+            const zPos = -pW/2 + (pW/5)*i;
+            palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(pL, deckH, 15).translate(0, topY, zPos), darkPlastic));
+            const xPos = -pL/2 + (pL/5)*i;
+            palGroup.add(new THREE.Mesh(new THREE.BoxGeometry(15, deckH, pW).translate(xPos, topY, 0), darkPlastic));
+        }
+        
+        const legW = 100; const legH = pH - deckH;
+        const legGeo = new THREE.BoxGeometry(legW, legH, legW);
+        const legPositions = [
+            [-pL/2 + legW/2, -pW/2 + legW/2], [0, -pW/2 + legW/2], [pL/2 - legW/2, -pW/2 + legW/2],
+            [-pL/2 + legW/2, 0], [0, 0], [pL/2 - legW/2, 0],
+            [-pL/2 + legW/2, pW/2 - legW/2], [0, pW/2 - legW/2], [pL/2 - legW/2, pW/2 - legW/2]
+        ];
+        
+        legPositions.forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, darkPlastic);
+            leg.position.set(pos[0], legH/2, pos[1]);
+            palGroup.add(leg);
+        });
+        
+        return palGroup;
+    }
+
+    function get2DLayouts(bx, bz, PX, PZ) {
+        let layouts = [];
+        const floor = Math.floor;
+
+        let l1 = [];
+        const nx1 = floor(PX/bx), nz1 = floor(PZ/bz);
+        for(let i=0; i<nx1; i++) for(let j=0; j<nz1; j++) 
+            l1.push({x: i*bx + bx/2, z: j*bz + bz/2, rot: false, w: bx, d: bz});
+        if(l1.length > 0) layouts.push({name: "Bloque Lineal", boxes: l1});
+
+        let l2 = [];
+        const nx2 = floor(PX/bz), nz2 = floor(PZ/bx);
+        for(let i=0; i<nx2; i++) for(let j=0; j<nz2; j++) 
+            l2.push({x: i*bz + bz/2, z: j*bx + bx/2, rot: true, w: bz, d: bx});
+        if(l2.length > 0) layouts.push({name: "Bloque Rotado", boxes: l2});
+
+        if (nx1 > 1 && nz1 > 1 && floor(PZ/bx) > 0) {
+            for (let splitX = 1; splitX < nx1; splitX++) {
+                let lx = []; 
+                const area1W = splitX * bx, area2W = PX - area1W;
+                for(let i=0; i<splitX; i++) for(let j=0; j<nz1; j++)
+                    lx.push({x: i*bx + bx/2, z: j*bz + bz/2, rot: false, w: bx, d: bz});
+                const nxRot = floor(area2W / bz), nzRot = floor(PZ / bx);
+                for(let i=0; i<nxRot; i++) for(let j=0; j<nzRot; j++)
+                    lx.push({x: area1W + i*bz + bz/2, z: j*bx + bx/2, rot: true, w: bz, d: bx});
+                if(lx.length > l1.length && lx.length > l2.length) 
+                    layouts.push({name: `Molinillo Eje-X (${splitX})`, boxes: lx});
+            }
+        }
+
+        if (nx1 > 1 && nz1 > 1 && floor(PX/bz) > 0) {
+            for (let splitZ = 1; splitZ < nz1; splitZ++) {
+                let lz = []; 
+                const area1D = splitZ * bz, area2D = PZ - area1D;
+                for(let i=0; i<nx1; i++) for(let j=0; j<splitZ; j++)
+                    lz.push({x: i*bx + bx/2, z: j*bz + bz/2, rot: false, w: bx, d: bz});
+                const nxRot = floor(PX / bz), nzRot = floor(area2D / bx);
+                for(let i=0; i<nxRot; i++) for(let j=0; j<nzRot; j++)
+                    lz.push({x: i*bz + bz/2, z: area1D + j*bx + bx/2, rot: true, w: bz, d: bx});
+                if(lz.length > l1.length && lz.length > l2.length) 
+                    layouts.push({name: `Molinillo Eje-Z (${splitZ})`, boxes: lz});
+            }
+        }
+        return layouts;
+    }
+
+    function openOptimizationModal() {
+        document.getElementById('optModal').style.display = 'flex';
+        runOptimizationLogic();
+    }
+
+    function runOptimizationLogic() {
+        const extL = parseFloat(document.getElementById('boxL').value) || 503; 
+        const extW = parseFloat(document.getElementById('boxW').value) || 303;
+        const extH = parseFloat(document.getElementById('boxH').value) || 254;
+        
+        const pL = parseFloat(document.getElementById('palL').value) || 1219.2;
+        const pW = parseFloat(document.getElementById('palW').value) || 1016;
+        const pOver = parseFloat(document.getElementById('palOver').value) || 15;
+        const maxH = parseFloat(document.getElementById('maxH').value) || 1500;
+        const palH = parseFloat(document.getElementById('palH').value) || 150;
+
+        const charolaStr = document.getElementById('charolaLayers') ? document.getElementById('charolaLayers').value : "";
+        const hasCharola = charolaStr.length > 0;
+        const fluteB = 2.70;
+        
+        let availL = pL; let availW = pW;
+        if (hasCharola) {
+            availL = 1200; availW = 1000;
+        } else {
+            availL += (pOver * 2);
+            availW += (pOver * 2);
+        }
+        
+        const oriFilter = document.getElementById('optOri').value;
+        const effPL = availL; const effPW = availW;
+
+        let possibleOrients = [];
+        if (oriFilter === 'ALL' || oriFilter === 'Z') possibleOrients.push({ id: 'Z', name: 'Parada (Alto Vert)', dx: extL, dz: extW, dy: extH, rx: 0, rz: 0 });
+        if (oriFilter === 'ALL' || oriFilter === 'X') possibleOrients.push({ id: 'X', name: 'Lado (Largo Vert)', dx: extH, dz: extW, dy: extL, rx: 0, rz: -Math.PI/2 });
+        if (oriFilter === 'ALL' || oriFilter === 'Y') possibleOrients.push({ id: 'Y', name: 'Frente (Ancho Vert)', dx: extL, dz: extH, dy: extW, rx: Math.PI/2, rz: 0 });
+
+        generatedPatterns = [];
+
+        possibleOrients.forEach(ori => {
+            let layouts = get2DLayouts(ori.dx, ori.dz, effPL, effPW);
+            layouts.forEach(lay => {
+                let maxLayers = Math.floor((maxH - palH) / ori.dy);
+                if(maxLayers > 0) {
+                    generatedPatterns.push({
+                        title: `${lay.name} (${ori.name})`,
+                        orient: ori,
+                        boxesPerLayer: lay.boxes.length,
+                        layers: maxLayers,
+                        total: lay.boxes.length * maxLayers,
+                        boxes: lay.boxes,
+                        effPL: effPL, effPW: effPW
+                    });
+                }
+            });
+        });
+
+        generatedPatterns.sort((a,b) => b.total - a.total);
+        const grid = document.getElementById('patternGrid'); grid.innerHTML = '';
+        
+        generatedPatterns.slice(0, 12).forEach((pat, index) => {
+            const canvasId = `canv_${index}`;
+            const card = document.createElement('div');
+            card.className = 'pattern-card';
+            card.innerHTML = `
+                <canvas id="${canvasId}" class="pattern-canvas" width="220" height="160"></canvas>
+                <div class="pattern-info">
+                    <strong>${pat.title}</strong><br>
+                    Camas: ${pat.layers} | Cajas/Cama: ${pat.boxesPerLayer}<br>
+                    <span class="pattern-highlight">Total: ${pat.total} cajas</span>
+                </div>
+            `;
+            card.onclick = () => { document.getElementById('optModal').style.display = 'none'; renderSelectedPattern(index); };
+            grid.appendChild(card);
+
+            const canvas = document.getElementById(canvasId); const ctx = canvas.getContext('2d');
+            const scale = Math.min(canvas.width / effPL, canvas.height / effPW) * 0.9;
+            const ox = (canvas.width - effPL * scale) / 2; const oy = (canvas.height - effPW * scale) / 2;
+            
+            ctx.fillStyle = "#dfe6e9"; ctx.fillRect(ox, oy, effPL * scale, effPW * scale); 
+            ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 1;
+            
+            pat.boxes.forEach(b => {
+                ctx.fillStyle = b.rot ? "#e17055" : "#fab1a0"; 
+                const rectX = ox + (b.x - b.w/2)*scale;
+                const rectZ = oy + (b.z - b.d/2)*scale;
+                const rectW = b.w * scale; const rectD = b.d * scale;
+                ctx.fillRect(rectX, rectZ, rectW, rectD); ctx.strokeRect(rectX, rectZ, rectW, rectD);
+            });
+        });
+    }
+
+    function renderSelectedPattern(index) {
+        resetScene();
+        const pat = generatedPatterns[index];
+        const alternated = (document.getElementById('optLayers').value === 'alternated');
+
+        const extL = parseFloat(document.getElementById('boxL').value) || 503; 
+        const extW = parseFloat(document.getElementById('boxW').value) || 303;
+        const extH = parseFloat(document.getElementById('boxH').value) || 254;
+        
+        const pL = parseFloat(document.getElementById('palL').value) || 1219.2;
+        const pW = parseFloat(document.getElementById('palW').value) || 1016;
+        const pH = parseFloat(document.getElementById('palH').value) || 150;
+
+        const doubleStack = document.getElementById('doubleStack') ? document.getElementById('doubleStack').checked : false;
+        const usePlayo = document.getElementById('usePlayo') ? document.getElementById('usePlayo').checked : false;
+        const esqH = parseFloat(document.getElementById('esquineroH').value) || 0;
+        const useCorona = document.getElementById('useCorona') ? document.getElementById('useCorona').checked : false;
+        const coronaH = parseFloat(document.getElementById('coronaH').value) || 50;
+
+        const charolaStr = document.getElementById('charolaLayers') ? document.getElementById('charolaLayers').value : "";
+        const sheetStr = document.getElementById('sheetLayers') ? document.getElementById('sheetLayers').value : "";
+        const charolaLayers = charolaStr ? charolaStr.split(',').map(n => parseInt(n.trim()) - 1) : [];
+        const sheetLayers = sheetStr ? sheetStr.split(',').map(n => parseInt(n.trim()) - 1) : [];
+        const sheetType = document.getElementById('sheetType') ? document.getElementById('sheetType').value : 'simple';
+
+        const numPallets = doubleStack ? 2 : 1;
+        
+        // --- 📊 INICIO CÁLCULO DE PESOS ---
+        const bL = parseFloat(document.getElementById('bagL').value) || 135; 
+        const bD = parseFloat(document.getElementById('bagDMax').value) || parseFloat(document.getElementById('bagDMin').value) || 55;
+        const originalH = parseFloat(document.getElementById('bagH').value) || 260;
+        const foldAmount = parseFloat(document.getElementById('bagFold').value) || 0;
+        const compL = parseFloat(document.getElementById('bagCompL').value) || 0;
+        const compD = parseFloat(document.getElementById('bagCompD').value) || 0;
+        
+        const effectiveBH = originalH - foldAmount; 
+        const effectiveBL = bL * (1 - (compL / 100)); 
+        const effectiveBD = bD * (1 - (compD / 100));
+
+        const fluteT = parseFloat(document.getElementById('boxFlute').value) || 2.7;
+        const intL = extL - (2 * fluteT); const intW = extW - (2 * fluteT); const intH = extH - (4 * fluteT); 
+
+        const nx = Math.floor((intL + 2) / effectiveBL);
+        const ny = Math.floor(intH / effectiveBH); 
+        const nz = Math.floor((intW + 2) / effectiveBD);
+        const bagsPerBox = (nx > 0 && ny > 0 && nz > 0) ? (nx * ny * nz) : 0;
+
+        const prodW = parseFloat(document.getElementById('bagNetW').value) || 0; 
+        const bagTaraW = parseFloat(document.getElementById('bagTaraW').value) || 0; 
+        const boxTaraW = parseFloat(document.getElementById('boxTaraW').value) || 0;
+
+        const pesoNetoCorrugado_kg = (bagsPerBox * prodW) / 1000;
+        const pesoBolsas_kg = (bagsPerBox * bagTaraW) / 1000;
+        
+        const hasTape = (document.getElementById('closureType').value === 'tape');
+        let pesoCinta_kg = 0;
+        if(hasTape) {
+            pesoCinta_kg = ((38 * 0.91) * (2 * (extL + 16)) / 1000) / 1000;
+        }
+
+        const pesoBrutoCorrugado_kg = pesoNetoCorrugado_kg + pesoBolsas_kg + (boxTaraW / 1000) + pesoCinta_kg;
+
+        const palletType = document.getElementById('palType').value;
+        const pesoTarimaVacia_kg = palletType === 'madera' ? 25 : 15;
+        
+        const heightMeters = (pat.layers * pat.orient.dy) / 1000; 
+        
+        let pesoPlayo_kg = 0;
+        if(usePlayo) {
+            if(!doubleStack) {
+                pesoPlayo_kg = 3 * (((2 * ((1.2 * 1) + (1.2 * heightMeters) + (1 * heightMeters))) - 2 * (1 * 1.2)) * 0.007025);
+            } else {
+                const p1 = 3 * (((2 * ((1.2 * 1) + (1.2 * heightMeters) + (1 * heightMeters))) - 2 * (1 * 1.2)) * 0.007025);
+                const p2 = 3 * ((((2 * ((1.2 * 1) + (1.2 * heightMeters) + (1 * heightMeters))) - 2 * (1 * 1.2)) * 2) * 0.007025);
+                pesoPlayo_kg = p1 + p2;
+            }
+        }
+
+        const pesoBrutoCama_kg = pat.boxesPerLayer * pesoBrutoCorrugado_kg;
+        
+        // Carga que soporta UNA sola caja en la base
+        let pesoSoportadoPorCaja_kg = pesoBrutoCorrugado_kg * (pat.layers - 1); 
+        
+        // Si hay doble estiba, sumamos el peso de la tarima de arriba a la caja base
+        if (doubleStack) {
+            let pesoTarimaSuperiorRepartido = pesoTarimaVacia_kg / pat.boxesPerLayer;
+            let pesoCajasSuperiores = pesoBrutoCorrugado_kg * pat.layers;
+            pesoSoportadoPorCaja_kg += pesoTarimaSuperiorRepartido + pesoCajasSuperiores;
+        }       
+        
+        const pesoBrutoSoportarPrimeraCama_kg = pesoSoportadoPorCaja_kg * pat.boxesPerLayer;
+        const pesoBrutoEmbalajeSinTarima_kg = (pat.total * pesoBrutoCorrugado_kg) * numPallets + pesoPlayo_kg;
+        const pesoBrutoPallet_kg = pesoBrutoEmbalajeSinTarima_kg + (pesoTarimaVacia_kg * numPallets);
+
+        // --- 📊 1. ACTUALIZAR PANEL DE LOGÍSTICA ---
+        document.getElementById('results').innerHTML = `
+            <strong>Estiba Optimizada: ${pat.title}</strong><br>
+            Camas por Tarima: ${pat.layers} | Cajas/Cama: ${pat.boxesPerLayer}<br>
+            <strong>Total Cajas: ${pat.total * numPallets}</strong> ${doubleStack ? '<span style="color:#e74c3c;">(Doble Estiba)</span>' : ''}
+            <hr style="border-top:1px dashed #1abc9c; margin: 8px 0;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; font-size:12px;">
+                <div>📦 Bruto/Caja: <b>${pesoBrutoCorrugado_kg.toFixed(3)} kg</b></div>
+                <div>🧱 Bruto/Cama: <b>${pesoBrutoCama_kg.toFixed(2)} kg</b></div>
+                <div>🪵 Tara Tarima: <b>${pesoTarimaVacia_kg} kg</b></div>
+                <div>🔄 Embalaje: <b>${pesoBrutoEmbalajeSinTarima_kg.toFixed(2)} kg</b></div>
+                <div style="grid-column: span 2; margin-top: 4px; color: #16a085;">
+                    🚀 <strong>PESO BRUTO TOTAL: ${pesoBrutoPallet_kg.toFixed(2)} kg</strong>
+                </div>
+            </div>
+        `;
+
+        // --- 📦 CÁLCULO DE RESISTENCIA BCT Y TRÁNSITO DINÁMICO ---
+        const ectValue = parseFloat(document.getElementById('boxECT').value) || 32;
+        const perimeterInches = (2 * extL + 2 * extW) / 25.4;
+        const thicknessInches = fluteT / 25.4;
+        
+        // 1. Resistencia original de fábrica (McKee)
+        const bctLbs_Original = 5.87 * ectValue * Math.sqrt(thicknessInches * perimeterInches);
+        const bctKg_Original = bctLbs_Original * 0.453592; 
+        
+        // 2. Resistencia Real en Destino (Afectada por la humedad de la ruta)
+        const tDecay = window.humidityDecay || 1; // Si no han calculado ruta, asume 100%
+        const bctKg_Real = bctKg_Original * tDecay;
+
+        // 3. Carga Dinámica (El peso se multiplica por los baches y frenones)
+        const tForce = window.transportFactor || 1; // Si no han calculado ruta, asume x1
+        const cargaDinamica_kg = pesoSoportadoPorCaja_kg * tForce;
+
+        // Cálculo del Factor de Seguridad en Viaje
+        const safetyFactor = cargaDinamica_kg > 0 ? (bctKg_Real / cargaDinamica_kg) : 99; 
+        
+        // Cálculo Inverso: ECT requerido para sobrevivir esta ruta
+        const idealBctKg_Dynamic = cargaDinamica_kg * 4.5;
+        const idealBctKg_OriginalReq = idealBctKg_Dynamic / tDecay; 
+        const idealBctLbs_Req = idealBctKg_OriginalReq / 0.453592;
+        const idealEctValue = idealBctLbs_Req / (5.87 * Math.sqrt(thicknessInches * perimeterInches));
+
+        let sfColor = "#059669"; let sfText = "✅ Viaje Seguro"; let sugerenciaIdeal = "";
+        let modoEstibaTexto = doubleStack ? "Doble Estiba" : "Estiba Sencilla";
+        let rutaTexto = tForce > 1 ? `(Ruta Evaluada: Fuerza x${tForce})` : `(Modo Almacén Estático)`;
+
+// --- INICIO MODIFICACIÓN AUTO-CORRECCIÓN ---
+        let triggerSparkCorrection = false;
+        let requiredECT = Math.ceil(idealEctValue);
+
+        if (pesoSoportadoPorCaja_kg === 0) {
+            sfText = "✅ Sin compresión";
+            sugerenciaIdeal = `<div style="margin-top:4px; font-size: 11px; color: #64748b;">(Solo hay 1 cama de cajas).</div>`;
+        } else if(safetyFactor < 3) {
+            sfColor = "#dc2626"; sfText = "❌ Colapso en Tránsito";
+            sugerenciaIdeal = `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; color:#dc2626;">💡 <b>Peligro:</b> Sube el cartón a <b>${requiredECT} ECT</b> mínimo para soportar las fuerzas G del viaje.</div>`;
+            triggerSparkCorrection = true;
+        } else if (safetyFactor < 4.5) {
+            sfColor = "#d97706"; sfText = "⚠️ Al Límite de Fatiga";
+            sugerenciaIdeal = `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; color:#d97706;">💡 <b>Precaución:</b> Si el viaje se retrasa, colapsará. Usa <b>${requiredECT} ECT</b> para asegurar.</div>`;
+            triggerSparkCorrection = true;
+        } else {
+            sugerenciaIdeal = `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; color:#059669;">💡 La caja resistirá el viaje sin problemas.</div>`;
+        }
+
+        // Si la caja va a fallar, hacer que Spark hable
+        if (triggerSparkCorrection && tForce > 1) { // Solo avisar si se está evaluando una ruta
+            setTimeout(() => {
+                const cityName = document.getElementById('altDestinoCity').value || "su destino";
+                addChatMessage('spark', `🚨 <b>¡ALERTA ESTRUCTURAL!</b><br>He detectado que tu caja de ${ectValue} ECT <b>colapsará</b> debido al estrés dinámico hacia ${cityName.toUpperCase()}.<br><br>👉 <i>¿Quieres que ajuste la resistencia a <b>${requiredECT} ECT</b> automáticamente para salvar la carga? (Responde "Arreglar caja")</i>`);
+                aiState.waitingForCorrection = true;
+                aiState.suggestedECT = requiredECT;
+            }, 1500); // Darle tiempo al modal de cerrarse y cargar el 3D
+        }
+        // --- FIN MODIFICACIÓN AUTO-CORRECCIÓN ---        
+
+        const bctDiv = document.getElementById('bctResults');
+        bctDiv.style.display = "block";
+        bctDiv.style.background = sfColor + "15"; 
+        bctDiv.style.borderLeft = "4px solid " + sfColor;
+       bctDiv.innerHTML = `
+            <h4 style="margin:0 0 8px 0; color: ${sfColor}; font-size:13px; text-transform: uppercase;">Prueba Dinámica: ${modoEstibaTexto}</h4>
+            <div style="font-size:11px; color:#64748b; margin-bottom:8px;">${rutaTexto}</div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom: 8px; font-size: 11px; background: rgba(255,255,255,0.6); padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                <div><strong style="color:#334155;">🏭 De Fábrica (Inicial)</strong><br>
+                    ECT Nominal: <b>${ectValue}</b> lb/in<br>
+                    BCT Teórico: <b>${bctKg_Original.toFixed(1)}</b> kgf
+                </div>
+                <div><strong style="color:#334155;">🗺️ En Ruta (Final / Req.)</strong><br>
+                    ECT Requerido: <b style="color:${sfColor};">${Math.ceil(idealEctValue)}</b> lb/in<br>
+                    BCT Real (Degradado): <b>${bctKg_Real.toFixed(1)}</b> kgf
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 4px;">
+                <span style="font-size: 12px;"><strong>Carga Dinámica (Impactos):</strong> ${cargaDinamica_kg.toFixed(1)} kgf</span>
+            </div>
+            Factor de Seguridad (F.S.): <b style="color:${sfColor}; font-size:13px;">${safetyFactor === 99 ? 'N/A' : safetyFactor.toFixed(2)} (${sfText})</b>
+            ${sugerenciaIdeal}
+        `;
+
+        const boxGeo = new THREE.BoxGeometry(extL*0.99, extH*0.99, extW*0.99); 
+        const mats = [
+            textures.box.right || defaultBoxMat, textures.box.left || defaultBoxMat,
+            textures.box.top || defaultBoxMat, textures.box.bottom || defaultBoxMat,
+            textures.box.front || defaultBoxMat, textures.box.back || defaultBoxMat
+        ];
+
+        let totalHeightPerPallet = pH + (pat.layers * pat.orient.dy);
+        
+        const cIntL = 1200; 
+        const cIntW = 1000; 
+        const cExtL = cIntL + (2 * fluteB);
+        const cExtW = cIntW + (2 * fluteB);
+
+        for(let p = 0; p < numPallets; p++) {
+            const currentYOffset = p * totalHeightPerPallet;
+
+            // DIBUJAR TARIMA GRIS CON ESTILO DE MADERA
+            let palletMesh;
+            if(palletType === 'plastico') {
+                palletMesh = createPlasticPallet(pL, pH, pW);
+            } else {
+                palletMesh = createWoodenPallet(pL, pH, pW, 0x7f8c8d); // Madera estilo Gris 
+            }
+            palletMesh.position.y += currentYOffset;
+            group.add(palletMesh);
+
+            const palletLoadGroup = new THREE.Group();
+            
+            let minBoxX = Infinity, maxBoxX = -Infinity, minBoxZ = Infinity, maxBoxZ = -Infinity;
+
+            for(let lay=0; lay<pat.layers; lay++) {
+                const layY = currentYOffset + pH + (lay * pat.orient.dy);
+
+                if(charolaLayers.includes(lay)) {
+                    const charGroup = new THREE.Group();
+                    const cMat = defaultBoxMat; 
+                    const wH = 100; 
+                    
+                    const wallMatLargo = [barcelMat, barcelMat, cMat, cMat, barcelMat, barcelMat];
+                    const wallMatCorto = [barcelMat, barcelMat, cMat, cMat, barcelMat, barcelMat];
+
+                    const cBase = new THREE.Mesh(new THREE.BoxGeometry(cExtL, fluteB, cExtW), cMat);
+                    cBase.position.y = layY - (fluteB/2); charGroup.add(cBase);
+                    
+                    const w1 = new THREE.Mesh(new THREE.BoxGeometry(cExtL, wH, fluteB), wallMatLargo); w1.position.set(0, layY + wH/2, cExtW/2 - fluteB/2); charGroup.add(w1);
+                    const w2 = new THREE.Mesh(new THREE.BoxGeometry(cExtL, wH, fluteB), wallMatLargo); w2.position.set(0, layY + wH/2, -cExtW/2 + fluteB/2); charGroup.add(w2);
+                    const w3 = new THREE.Mesh(new THREE.BoxGeometry(fluteB, wH, cIntW), wallMatCorto); w3.position.set(cExtL/2 - fluteB/2, layY + wH/2, 0); charGroup.add(w3);
+                    const w4 = new THREE.Mesh(new THREE.BoxGeometry(fluteB, wH, cIntW), wallMatCorto); w4.position.set(-cExtL/2 + fluteB/2, layY + wH/2, 0); charGroup.add(w4);
+                    
+                    charGroup.position.set(0, 0, 0);
+                    group.add(charGroup); 
+                }
+                
+                if(sheetLayers.includes(lay)) {
+                    const sThick = sheetType === 'corrugado' ? 4 : 1;
+                    const sMat = sheetType === 'corrugado' ? defaultBoxMat : new THREE.MeshLambertMaterial({color: 0xdcdde1});
+                    const sheet = new THREE.Mesh(new THREE.BoxGeometry(1200, sThick, 1000), sMat);
+                    sheet.position.y = layY - sThick/2; 
+                    group.add(sheet); 
+                }
+
+                const applyRotationLayer = alternated && (lay % 2 !== 0); 
+                
+                pat.boxes.forEach(b => {
+                    const boxGroup = new THREE.Group();
+                    let rotY = 0;
+                    if(b.rot) rotY = Math.PI / 2; 
+
+                    let bx = b.x; let bz = b.z;
+                    if(applyRotationLayer) {
+                        bx = pat.effPL - b.x; bz = pat.effPW - b.z;
+                        rotY += Math.PI; 
+                    }
+
+                    if (lay === 0) {
+                        let hw = b.rot ? pat.orient.dz/2 : pat.orient.dx/2; 
+                        let hd = b.rot ? pat.orient.dx/2 : pat.orient.dz/2;
+                        minBoxX = Math.min(minBoxX, bx - hw); maxBoxX = Math.max(maxBoxX, bx + hw);
+                        minBoxZ = Math.min(minBoxZ, bz - hd); maxBoxZ = Math.max(maxBoxZ, bz + hd);
+                    }
+
+                    boxGroup.position.set(bx, layY + (pat.orient.dy / 2), bz);
+                    
+                    const innerContainer = new THREE.Group();
+                    innerContainer.add(new THREE.Mesh(boxGeo, mats));
+                    if(typeof addClosureToBox === 'function') addClosureToBox(innerContainer, extL, extW, extH);
+
+                    innerContainer.rotation.x = pat.orient.rx;
+                    innerContainer.rotation.z = pat.orient.rz;
+                    boxGroup.rotation.y = rotY; boxGroup.add(innerContainer);
+                    palletLoadGroup.add(boxGroup);
+                });
+            }
+
+            const cx = (minBoxX + maxBoxX) / 2;
+            const cz = (minBoxZ + maxBoxZ) / 2;
+            const actLoadL = maxBoxX - minBoxX;
+            const actLoadW = maxBoxZ - minBoxZ;
+
+            palletLoadGroup.children.forEach(child => {
+                child.position.x -= cx;
+                child.position.z -= cz;
+            });
+            
+            group.add(palletLoadGroup);
+
+            // ESQUINEROS 
+            const esqMat = new THREE.MeshLambertMaterial({color: 0x7b8c7b});
+            const wing = 50; const thick = 5;
+
+            if(esqH > 0) {
+                const halfL = actLoadL / 2;
+                const halfW = actLoadW / 2;
+                const topLoadY = currentYOffset + pH + (pat.layers * pat.orient.dy);
+                const esqCenterY = topLoadY - (esqH / 2);
+                
+                const posEsqV = [
+                    {x: halfL, z: halfW, r: 0}, 
+                    {x: -halfL, z: halfW, r: -Math.PI/2}, 
+                    {x: -halfL, z: -halfW, r: Math.PI}, 
+                    {x: halfL, z: -halfW, r: Math.PI/2} 
+                ];
+                
+                posEsqV.forEach(pos => {
+                    const corner = new THREE.Group();
+                    const wA = new THREE.Mesh(new THREE.BoxGeometry(thick, esqH, wing), esqMat); 
+                    wA.position.set(thick/2, 0, -wing/2 + thick);
+                    const wB = new THREE.Mesh(new THREE.BoxGeometry(wing, esqH, thick), esqMat); 
+                    wB.position.set(-wing/2 + thick, 0, thick/2);
+                    
+                    corner.add(wA); corner.add(wB);
+                    corner.position.set(pos.x, esqCenterY, pos.z);
+                    corner.rotation.y = pos.r;
+                    group.add(corner);
+                });
+            }
+
+            if(useCorona) {
+                const topY = currentYOffset + pH + (pat.layers * pat.orient.dy); 
+                const halfL = actLoadL / 2;
+                const halfW = actLoadW / 2;
+                
+                const cFront = new THREE.Group();
+                const cfA = new THREE.Mesh(new THREE.BoxGeometry(actLoadL + thick*2, coronaH, thick), esqMat); cfA.position.set(0, -coronaH/2, thick/2);
+                const cfB = new THREE.Mesh(new THREE.BoxGeometry(actLoadL + thick*2, thick, wing), esqMat); cfB.position.set(0, thick/2, -wing/2 + thick);
+                cFront.add(cfA); cFront.add(cfB);
+                cFront.position.set(0, topY, halfW);
+                group.add(cFront);
+
+                const cBack = new THREE.Group();
+                const cbA = new THREE.Mesh(new THREE.BoxGeometry(actLoadL + thick*2, coronaH, thick), esqMat); cbA.position.set(0, -coronaH/2, -thick/2);
+                const cbB = new THREE.Mesh(new THREE.BoxGeometry(actLoadL + thick*2, thick, wing), esqMat); cbB.position.set(0, thick/2, wing/2 - thick);
+                cBack.add(cbA); cBack.add(cbB);
+                cBack.position.set(0, topY, -halfW);
+                group.add(cBack);
+
+                const shortW = actLoadW - (wing * 2);
+                if(shortW > 0) {
+                    const cRight = new THREE.Group();
+                    const crA = new THREE.Mesh(new THREE.BoxGeometry(thick, coronaH, shortW), esqMat); crA.position.set(thick/2, -coronaH/2, 0);
+                    const crB = new THREE.Mesh(new THREE.BoxGeometry(wing, thick, shortW), esqMat); crB.position.set(-wing/2 + thick, thick/2, 0);
+                    cRight.add(crA); cRight.add(crB);
+                    cRight.position.set(halfL, topY, 0);
+                    group.add(cRight);
+
+                    const cLeft = new THREE.Group();
+                    const clA = new THREE.Mesh(new THREE.BoxGeometry(thick, coronaH, shortW), esqMat); clA.position.set(-thick/2, -coronaH/2, 0);
+                    const clB = new THREE.Mesh(new THREE.BoxGeometry(wing, thick, shortW), esqMat); clB.position.set(wing/2 - thick, thick/2, 0);
+                    cLeft.add(clA); cLeft.add(clB);
+                    cLeft.position.set(-halfL, topY, 0);
+                    group.add(cLeft);
+                }
+            }
+
+            // --- PLAYO REALISTA AZUL ---
+            if(usePlayo) {
+                const loadHeight = pat.layers * pat.orient.dy;
+                const grip = 50; 
+                const playoH = loadHeight + grip; 
+                
+                const playoMat = new THREE.MeshStandardMaterial({
+                    color: 0x0088ff,
+                    map: playoTex,
+                    transparent: true,
+                    opacity: 0.45,
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    depthWrite: false,
+                    side: THREE.FrontSide 
+                });
+                
+                const playoL = Math.max(actLoadL, pL) + 4;
+                const playoW = Math.max(actLoadW, pW) + 4;
+                const t = 2; 
+
+                const playoGroup = new THREE.Group();
+                
+                const sideY = currentYOffset + pH - grip + (playoH / 2);
+
+                const wallFB = new THREE.BoxGeometry(playoL, playoH, t);
+                const wallFront = new THREE.Mesh(wallFB, playoMat);
+                wallFront.position.set(0, sideY, playoW/2);
+                playoGroup.add(wallFront);
+                
+                const wallBack = new THREE.Mesh(wallFB, playoMat);
+                wallBack.position.set(0, sideY, -playoW/2);
+                playoGroup.add(wallBack);
+
+                const wallLR = new THREE.BoxGeometry(t, playoH, playoW);
+                const wallLeft = new THREE.Mesh(wallLR, playoMat);
+                wallLeft.position.set(-playoL/2, sideY, 0);
+                playoGroup.add(wallLeft);
+                
+                const wallRight = new THREE.Mesh(wallLR, playoMat);
+                wallRight.position.set(playoL/2, sideY, 0);
+                playoGroup.add(wallRight);
+
+                const topY = currentYOffset + pH + loadHeight;
+                const borderZ = playoW * 0.1; 
+                const borderX = playoL * 0.1; 
+                
+                const topFB = new THREE.BoxGeometry(playoL, t, borderZ);
+                const topFront = new THREE.Mesh(topFB, playoMat);
+                topFront.position.set(0, topY, playoW/2 - borderZ/2);
+                playoGroup.add(topFront);
+                
+                const topBack = new THREE.Mesh(topFB, playoMat);
+                topBack.position.set(0, topY, -playoW/2 + borderZ/2);
+                playoGroup.add(topBack);
+
+                const topLR = new THREE.BoxGeometry(borderX, t, playoW * 0.8); 
+                const topLeft = new THREE.Mesh(topLR, playoMat);
+                topLeft.position.set(-playoL/2 + borderX/2, topY, 0);
+                playoGroup.add(topLeft);
+                
+                const topRight = new THREE.Mesh(topLR, playoMat);
+                topRight.position.set(playoL/2 - borderX/2, topY, 0);
+                playoGroup.add(topRight);
+
+                group.add(playoGroup);
+            }
+        }
+
+        const totalOverallHeight = totalHeightPerPallet * numPallets;
+        const loadHeight = pat.layers * pat.orient.dy;
+        const topYPos = totalOverallHeight;
+        
+        // --- COTAS ---
+        drawCota(new THREE.Vector3(-pL/2, 0, pW/2), new THREE.Vector3(pL/2, 0, pW/2), pL.toFixed(0), "#000000", "z", 150); 
+        drawCota(new THREE.Vector3(-pL/2, 0, -pW/2), new THREE.Vector3(-pL/2, 0, pW/2), pW.toFixed(0), "#000000", "x", -150); 
+        drawCota(new THREE.Vector3(-pL/2, 0, -pW/2), new THREE.Vector3(-pL/2, totalOverallHeight, -pW/2), totalOverallHeight.toFixed(1), "#000000", "x", -250);
+        
+        drawCota(new THREE.Vector3(-pL/2, topYPos, -pW/2), new THREE.Vector3(pL/2, topYPos, -pW/2), pL.toFixed(0), "#ff0000", "y", 150); 
+        drawCota(new THREE.Vector3(pL/2, topYPos, -pW/2), new THREE.Vector3(pL/2, topYPos, pW/2), pW.toFixed(0), "#ff0000", "y", 150); 
+        drawCota(new THREE.Vector3(pL/2, pH, pW/2), new THREE.Vector3(pL/2, topYPos, pW/2), loadHeight.toFixed(0), "#ff0000", "x", 150);
+
+        const camDist = Math.max(pL, pW, totalOverallHeight);
+        saveHomeView(
+            new THREE.Vector3(-camDist * 1.1, totalOverallHeight * 1.2, camDist * 1.4), 
+            new THREE.Vector3(0, totalOverallHeight * 0.4, 0)
+        );
+    }
+
+    function createBagMesh(w, h, foldAmount, d) {
+        const bagGroup = new THREE.Group();
+        const sealSize = 15; 
+        const bodyH = h - (sealSize * 2); 
+        
+        const geo = new THREE.BoxGeometry(w, bodyH, d, 16, 16, 2);
+        
+        const uvAttr = geo.attributes.uv;
+        const sealV_Ratio = sealSize / h; 
+        
+        for (let i = 0; i < uvAttr.count; i++) {
+            let v = uvAttr.getY(i);
+            let mappedV = sealV_Ratio + (v * (1 - (2 * sealV_Ratio)));
+            uvAttr.setY(i, mappedV);
+        }
+
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            let x = pos.getX(i); let y = pos.getY(i); let z = pos.getZ(i);
+            if (Math.abs(z) > 0.1) { 
+                let nx = x / (w/2); let ny = y / (bodyH/2);
+                z = z * (0.1 + 0.9 * Math.cos(nx * Math.PI / 2)) * (0.1 + 0.9 * Math.cos(ny * Math.PI / 2));
+            }
+            pos.setZ(i, z);
+        }
+        geo.computeVertexNormals();
+
+        const mats = [defaultBagMat, defaultBagMat, defaultBagMat, defaultBagMat,
+            textures.bag.front ? new THREE.MeshLambertMaterial({map: textures.bag.front}) : defaultBagMat,
+            textures.bag.back ? new THREE.MeshLambertMaterial({map: textures.bag.back}) : defaultBagMat];
+        bagGroup.add(new THREE.Mesh(geo, mats));
+
+        const foldRatio = Math.max(0, Math.min(1, foldAmount / 30));
+        const angle = foldRatio * (Math.PI / 2);
+
+        const topSealGeo = new THREE.BoxGeometry(w * 0.95, sealSize, d * 0.05);
+        const uvTop = topSealGeo.attributes.uv;
+        for(let i=0; i<uvTop.count; i++) {
+             uvTop.setY(i, 1 - sealV_Ratio + (uvTop.getY(i) * sealV_Ratio)); 
+        }
+        topSealGeo.translate(0, sealSize/2, 0); 
+        const topSeal = new THREE.Mesh(topSealGeo, mats);
+        topSeal.position.set(0, bodyH / 2, 0); 
+        topSeal.rotation.x = angle; 
+        bagGroup.add(topSeal);
+
+        const botSealGeo = new THREE.BoxGeometry(w * 0.95, sealSize, d * 0.05);
+        const uvBot = botSealGeo.attributes.uv;
+        for(let i=0; i<uvBot.count; i++) {
+             uvBot.setY(i, (uvBot.getY(i) * sealV_Ratio)); 
+        }
+        botSealGeo.translate(0, -sealSize/2, 0); 
+        const botSeal = new THREE.Mesh(botSealGeo, mats);
+        botSeal.position.set(0, -bodyH / 2, 0); 
+        botSeal.rotation.x = -angle; 
+        bagGroup.add(botSeal);
+
+        return bagGroup;
+    }
+
+    function buildSingleBag() {
+        resetScene();
+        const bL = parseFloat(document.getElementById('bagL').value) || 135; 
+        const bD = parseFloat(document.getElementById('bagDMax').value) || parseFloat(document.getElementById('bagDMin').value) || 55;
+        const originalH = parseFloat(document.getElementById('bagH').value) || 260;
+        const fold = parseFloat(document.getElementById('bagFold').value) || 0;
+        const effH = originalH - fold;
+
+        const bag = createBagMesh(bL, originalH, fold, bD);
+        bag.position.y = effH/2; group.add(bag);
+
+        drawCota(new THREE.Vector3(-bL/2, 0, bD/2), new THREE.Vector3(bL/2, 0, bD/2), bL.toFixed(0), "#000000", "z", 60); 
+        drawCota(new THREE.Vector3(bL/2, 0, bD/2), new THREE.Vector3(bL/2, 0, -bD/2), bD.toFixed(0), "#000000", "x", 60); 
+        drawCota(new THREE.Vector3(-bL/2, 0, bD/2), new THREE.Vector3(-bL/2, effH, bD/2), effH.toFixed(0), "#000000", "x", -60); 
+
+        document.getElementById('results').innerHTML = `<strong>Vista: Bolsa</strong><br>Ancho Base (L): ${bL} | Fondo: ${bD} | Alto Efectivo: ${effH.toFixed(1)}`;
+        saveHomeView(new THREE.Vector3(bL*2, effH*2, bD*4), new THREE.Vector3(0, effH/2, 0));
+    }
+
+   function addClosureToBox(containerGroup, extL, extW, extH) {
+        const closureType = document.getElementById('closureType') ? document.getElementById('closureType').value : 'tape';
+        
+        if (closureType === 'tape') {
+            const tapeW = parseFloat(document.getElementById('tapeW').value) || 0;
+            const tapeDrop = parseFloat(document.getElementById('tapeDrop').value) || 0;
+            
+            if (tapeW > 0) {
+                const tTop = new THREE.Mesh(new THREE.BoxGeometry(extL + 3, 3, tapeW), tapeMat);
+                tTop.position.y = (extH / 2) + 1.5; 
+                containerGroup.add(tTop);
+                
+                const tBot = new THREE.Mesh(new THREE.BoxGeometry(extL + 3, 3, tapeW), tapeMat);
+                tBot.position.y = -(extH / 2) - 1.5; 
+                containerGroup.add(tBot);
+                
+                if (tapeDrop > 0) {
+                    const actualDrop = Math.min(tapeDrop, extH/2);
+                    const tSideGeo = new THREE.BoxGeometry(3, actualDrop, tapeW);
+                    
+                    const tSideFrontTop = new THREE.Mesh(tSideGeo, tapeMat);
+                    tSideFrontTop.position.set(-extL/2 - 1.5, (extH/2) - actualDrop/2, 0); 
+                    containerGroup.add(tSideFrontTop);
+                    
+                    const tSideBackTop = new THREE.Mesh(tSideGeo, tapeMat);
+                    tSideBackTop.position.set(extL/2 + 1.5, (extH/2) - actualDrop/2, 0); 
+                    containerGroup.add(tSideBackTop);
+                    
+                    const tSideFrontBot = new THREE.Mesh(tSideGeo, tapeMat);
+                    tSideFrontBot.position.set(-extL/2 - 1.5, -(extH/2) + actualDrop/2, 0); 
+                    containerGroup.add(tSideFrontBot);
+                    
+                    const tSideBackBot = new THREE.Mesh(tSideGeo, tapeMat);
+                    tSideBackBot.position.set(extL/2 + 1.5, -(extH/2) + actualDrop/2, 0); 
+                    containerGroup.add(tSideBackBot);
+                }
+            }
+        } else if (closureType === 'seal') {
+            const diamX = parseFloat(document.getElementById('sealX').value) || 60;
+            const diamY = parseFloat(document.getElementById('sealY').value) || 40;
+            
+            if (diamX > 0 && diamY > 0) {
+                const sealMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+                
+                const topSealGeo = new THREE.PlaneGeometry(diamX, diamY / 2);
+                const topSeal = new THREE.Mesh(topSealGeo, sealMat);
+                topSeal.rotation.x = -Math.PI / 2; 
+                topSeal.position.set(0, (extH / 2) + 0.5, (extW / 2) - (diamY / 4));
+                containerGroup.add(topSeal);
+
+                const frontSealGeo = new THREE.PlaneGeometry(diamX, diamY / 2);
+                const frontSeal = new THREE.Mesh(frontSealGeo, sealMat);
+                frontSeal.position.set(0, (extH / 2) - (diamY / 4), (extW / 2) + 0.5);
+                containerGroup.add(frontSeal);
+            }
+        }
+    }
+
+    function buildSingleBox() {
+        resetScene();
+        const extL = parseFloat(document.getElementById('boxL').value) || 503;
+        const extW = parseFloat(document.getElementById('boxW').value) || 303;
+        const extH = parseFloat(document.getElementById('boxH').value) || 254;
+        
+        const fluteT = parseFloat(document.getElementById('boxFlute').value);
+        const intL = extL - (2 * fluteT); const intW = extW - (2 * fluteT); const intH = extH - (4 * fluteT); 
+        const tapeW = parseFloat(document.getElementById('tapeW').value) || 0;
+        const tapeDrop = parseFloat(document.getElementById('tapeDrop').value) || 0;
+
+        const innerContainer = new THREE.Group();
+        const mats = [
+            textures.box.right || defaultBoxMat,
+            textures.box.left || defaultBoxMat,
+            textures.box.top || defaultBoxMat,
+            textures.box.bottom || defaultBoxMat,
+            textures.box.front || defaultBoxMat,
+            textures.box.back || defaultBoxMat
+        ];
+
+        innerContainer.add(new THREE.Mesh(new THREE.BoxGeometry(extL, extH, extW), mats));
+
+        addClosureToBox(innerContainer, extL, extW, extH);
+        innerContainer.position.y = extH/2; group.add(innerContainer);
+
+        drawCota(new THREE.Vector3(-extL/2, 0, extW/2), new THREE.Vector3(extL/2, 0, extW/2), extL.toFixed(0), "#000000", "z", 80); 
+        drawCota(new THREE.Vector3(extL/2, 0, extW/2), new THREE.Vector3(extL/2, 0, -extW/2), extW.toFixed(0), "#000000", "x", 80); 
+        drawCota(new THREE.Vector3(-extL/2, 0, extW/2), new THREE.Vector3(-extL/2, extH, extW/2), extH.toFixed(0), "#000000", "x", -80); 
+
+        document.getElementById('results').innerHTML = `<strong>Vista: Caja Corrugada (Externa)</strong><br>Volumen Interno Real: ${intL.toFixed(1)} x ${intW.toFixed(1)} x ${intH.toFixed(1)} mm`;
+        saveHomeView(new THREE.Vector3(extL*1.5, extH*1.5, extW*2), new THREE.Vector3(0, extH/2, 0));
+    }
+
+    function buildBagsInBox() {
+        resetScene();
+        
+        const bL = parseFloat(document.getElementById('bagL').value) || 135; 
+        const bD = parseFloat(document.getElementById('bagDMax').value) || parseFloat(document.getElementById('bagDMin').value) || 55; 
+        const originalH = parseFloat(document.getElementById('bagH').value) || 260;
+        const foldAmount = parseFloat(document.getElementById('bagFold').value) || 0;
+        const compL = parseFloat(document.getElementById('bagCompL').value) || 0;
+        const compD = parseFloat(document.getElementById('bagCompD').value) || 0;
+        
+        const effectiveBH = originalH - foldAmount; 
+        const effectiveBL = bL * (1 - (compL / 100)); 
+        const effectiveBD = bD * (1 - (compD / 100));
+
+        const extL = parseFloat(document.getElementById('boxL').value) || 503;
+        const extW = parseFloat(document.getElementById('boxW').value) || 303;
+        const extH = parseFloat(document.getElementById('boxH').value) || 254;
+        
+        const fluteT = parseFloat(document.getElementById('boxFlute').value);
+        const intL = extL - (2 * fluteT); const intW = extW - (2 * fluteT); const intH = extH - (4 * fluteT); 
+
+        const nx = Math.floor((intL + 2) / effectiveBL);
+        const ny = Math.floor(intH / effectiveBH); 
+        const nz = Math.floor((intW + 2) / effectiveBD);
+        const total = nx * ny * nz;
+
+        currentBoxView = document.getElementById('boxViewType').value;
+
+        let viewText = currentBoxView === 'diagonal' ? "Vista Diagonal (Corrugado Transparente)" : "Vista Superior (Corrugado Abierto)";
+        // --- ♻️ CÁLCULO DE EFICIENCIA VOLUMÉTRICA ---
+        const volCajaInterno = intL * intW * intH;
+        const volBolsasTotal = total * (effectiveBL * effectiveBD * effectiveBH);
+        const eficienciaVol = volCajaInterno > 0 ? ((volBolsasTotal / volCajaInterno) * 100).toFixed(1) : 0;
+
+        document.getElementById('results').innerHTML = `
+            <strong>${viewText}</strong><br>
+            Arreglo: ${nx} Frente x ${nz} Fondo x ${ny} Niveles<br>
+            <strong>Total: ${total} bolsas</strong> | <span style="color:#27ae60;"><b>♻️ Eficiencia: ${eficienciaVol}%</b></span>
+        `;        
+
+        const openBoxGroup = new THREE.Group();
+        
+        if (currentBoxView === 'top') {
+            const mat = defaultBoxMat; 
+            
+            const base = new THREE.Mesh(new THREE.BoxGeometry(extL, fluteT, extW), mat);
+            base.position.y = fluteT / 2;
+            openBoxGroup.add(base);
+
+            const wallF = new THREE.Mesh(new THREE.BoxGeometry(extL, extH, fluteT), mat);
+            wallF.position.set(0, extH/2, extW/2 - fluteT/2);
+            openBoxGroup.add(wallF);
+
+            const wallB = new THREE.Mesh(new THREE.BoxGeometry(extL, extH, fluteT), mat);
+            wallB.position.set(0, extH/2, -extW/2 + fluteT/2);
+            openBoxGroup.add(wallB);
+
+            const wallL = new THREE.Mesh(new THREE.BoxGeometry(fluteT, extH, extW - 2*fluteT), mat);
+            wallL.position.set(-extL/2 + fluteT/2, extH/2, 0);
+            openBoxGroup.add(wallL);
+
+            const wallR = new THREE.Mesh(new THREE.BoxGeometry(fluteT, extH, extW - 2*fluteT), mat);
+            wallR.position.set(extL/2 - fluteT/2, extH/2, 0);
+            openBoxGroup.add(wallR);
+
+            function createFlap(width, height, depth, rotAxis, rotAngle) {
+                const pivot = new THREE.Group();
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mat);
+                mesh.position.y = height / 2;
+                pivot.add(mesh);
+                if(rotAxis === 'x') pivot.rotation.x = rotAngle;
+                if(rotAxis === 'z') pivot.rotation.z = rotAngle;
+                return pivot;
+            }
+
+            const flapAngle = Math.PI * 0.6; 
+
+            const flapFront = createFlap(extL, extW/2, fluteT, 'x', flapAngle);
+            flapFront.position.set(0, extH, extW/2 - fluteT/2);
+            openBoxGroup.add(flapFront);
+
+            const flapBack = createFlap(extL, extW/2, fluteT, 'x', -flapAngle);
+            flapBack.position.set(0, extH, -extW/2 + fluteT/2);
+            openBoxGroup.add(flapBack);
+
+            const flapLeft = createFlap(fluteT, extW/2, extW, 'z', flapAngle);
+            flapLeft.position.set(-extL/2 + fluteT/2, extH, 0);
+            openBoxGroup.add(flapLeft);
+
+            const flapRight = createFlap(fluteT, extW/2, extW, 'z', -flapAngle);
+            flapRight.position.set(extL/2 - fluteT/2, extH, 0);
+            openBoxGroup.add(flapRight);
+
+        } else {
+            const transMat = new THREE.MeshBasicMaterial({ color: 0xcd853f, transparent: true, opacity: 0.3, wireframe: false, depthWrite: false });
+            const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(extL, extH, extW), transMat);
+            boxMesh.position.set(0, extH/2, 0);
+            
+            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(extL, extH, extW));
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial( { color: 0x8b4513 } ) );
+            line.position.set(0, extH/2, 0);
+            
+            openBoxGroup.add(boxMesh);
+            openBoxGroup.add(line);
+        }
+
+        group.add(openBoxGroup);
+
+        const totalPackL = (nx > 0) ? ((nx - 1) * effectiveBL + bL) : 0;
+        const totalPackD = (nz > 0) ? ((nz - 1) * effectiveBD + bD) : 0;
+        
+        const startX = -(totalPackL / 2) + (bL / 2);
+        const startY = (effectiveBH / 2) + fluteT; 
+        const startZ = -(totalPackD / 2) + (bD / 2);
+
+        for(let i=0; i<nx; i++) {
+            for(let j=0; j<ny; j++) {
+                for(let k=0; k<nz; k++) {
+                    const bag = createBagMesh(bL, originalH, foldAmount, bD);
+                    bag.position.set(startX + (i * effectiveBL), startY + (j * effectiveBH), startZ + (k * effectiveBD));
+                    group.add(bag);
+                }
+            }
+        }
+        
+        const camDist = Math.max(extL, extW) * 1.5;
+        if (currentBoxView === 'diagonal') {
+            saveHomeView(new THREE.Vector3(extL, extH + camDist*0.8, extW), new THREE.Vector3(0, extH/2, 0));
+        } else {
+            saveHomeView(new THREE.Vector3(0, extH + camDist, 0.1), new THREE.Vector3(0, extH/2, 0));
+        }
+    }
+
+// --- TEXTURA PROCEDURAL DE SNACKS ---
+const createSnackBumpTexture = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#000000'; 
+    ctx.fillRect(0, 0, 256, 256);
+    
+    for (let i = 0; i < 180; i++) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.9})`;
+        ctx.beginPath();
+        const w = 5 + Math.random() * 25; 
+        const h = 5 + Math.random() * 8;  
+        const angle = Math.random() * Math.PI;
+        const x = Math.random() * 256;
+        const y = 100 + Math.random() * 140; 
+        ctx.ellipse(x, y, w, h, angle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+};
+const snackBumpTex = createSnackBumpTexture();
+
+// --- ✈️ SIMULADOR DE PRESIÓN Y ALTITUD ---
+let simAnimFrame; 
+
+function checkPressureRisk() {
+    if (simAnimFrame) cancelAnimationFrame(simAnimFrame);
+
+    const extL = parseFloat(document.getElementById('boxL').value);
+    const extW = parseFloat(document.getElementById('boxW').value);
+    const extH = parseFloat(document.getElementById('boxH').value);
+    if (!extW || !extL || !extH) {
+        alert("⚠️ Por favor, selecciona un Item Corrugado en el paso 2 o ingresa manualmente las dimensiones de la caja antes de simular.");
+        return;
+    }
+
+    const altOrig = parseFloat(document.getElementById('altOrigen').value) || 0;
+    const altDest = parseFloat(document.getElementById('altDestino').value) || 0;
+    const resultDiv = document.getElementById('pressureResult');
+    
+    const calcPressure = (h) => 1013.25 * Math.pow(1 - 0.0000225577 * h, 5.25588);
+    const pOrig = calcPressure(altOrig);
+    const pDest = calcPressure(altDest);
+    const volRatio = pOrig / pDest;
+    const percentChange = (volRatio - 1) * 100;
+
+    const bL = parseFloat(document.getElementById('bagL').value) || 135; 
+    const originalH = parseFloat(document.getElementById('bagH').value) || 260;
+    const fold = parseFloat(document.getElementById('bagFold').value) || 0;
+    const effH = originalH - fold;
+    const dMin = parseFloat(document.getElementById('bagDMin').value) || 40; 
+    const dMax = parseFloat(document.getElementById('bagDMax').value) || 60; 
+    const compL = parseFloat(document.getElementById('bagCompL').value) || 0;
+
+    const fluteT = parseFloat(document.getElementById('boxFlute').value) || 2.70;
+    const intW = extW - (2 * fluteT); 
+    const intL = extL - (2 * fluteT);
+    const intH = extH - (4 * fluteT);
+
+    const nx = parseInt(document.getElementById('simFilasX').value) || 1; 
+    const nz = parseInt(document.getElementById('simBolsasZ').value) || 1; 
+    const effectiveBL = bL * (1 - (compL / 100));
+    const ny = Math.floor(intH / effH) || 1; 
+
+    const boxMaxLimit = intW / nz; 
+    const bagPhysicalMax = (bL * 2) / Math.PI * 0.85; 
+    const absoluteMaxSafeDest = Math.min(boxMaxLimit, bagPhysicalMax);
+    const absoluteMinSafeDest = Math.max(40, bL * 0.25); 
+
+    const suggestedMin = (absoluteMinSafeDest / volRatio).toFixed(1);
+    const suggestedMax = (absoluteMaxSafeDest / volRatio).toFixed(1);
+    const isImpossible = parseFloat(suggestedMin) >= parseFloat(suggestedMax); 
+
+    const dOrig = (dMin + dMax) / 2; 
+    const dDest = dOrig * volRatio; 
+
+    const isBoxExplosion = dDest > boxMaxLimit;
+    const isBagExplosion = dDest > bagPhysicalMax;
+    const isExplosion = isBoxExplosion || isBagExplosion;
+    const isVacuum = dDest < absoluteMinSafeDest;
+    
+    resetScene();
+    
+    const offsetRight = extL * 0.7; 
+    let posOrigen, posDestino, textOrigen, textDestino;
+
+    if (isVacuum) {
+        posDestino = -extL * 0.5 - bL * 1.5;
+        posOrigen = -extL * 0.5;
+        textDestino = "1. Destino (Vacío)";
+        textOrigen = "2. Planta Origen";
+    } else if (isExplosion) {
+        posOrigen = -extL * 0.5 - bL * 1.5;
+        posDestino = -extL * 0.5;
+        textOrigen = "1. Planta Origen";
+        textDestino = "2. Destino (Explosión)";
+    } else {
+        posOrigen = -extL * 0.5 - bL * 1.5;
+        posDestino = -extL * 0.5;
+        textOrigen = "1. Planta Origen";
+        textDestino = "2. Bolsa Destino";
+    }
+
+    const bagOrig = createBagMesh(bL, originalH, fold, dOrig);
+    bagOrig.position.set(posOrigen, effH/2, 0);
+    group.add(bagOrig);
+    
+    drawCota(new THREE.Vector3(posOrigen, 0, dOrig/2), new THREE.Vector3(posOrigen, 0, -dOrig/2), dOrig.toFixed(1) + "mm", "#124e70", "x", -60);
+    const labelOrig = makeTextSprite(textOrigen, "#124e70");
+    labelOrig.position.set(posOrigen, effH + 60, 0);
+    group.add(labelOrig);
+
+    const bagDestSingle = createBagMesh(bL, originalH, fold, dOrig);
+    bagDestSingle.position.set(posDestino, effH/2, 0);
+    
+    bagDestSingle.children.forEach((child, index) => {
+        if(child.material) {
+            child.material = Array.isArray(child.material) ? child.material.map(m => m.clone()) : child.material.clone();
+            if (index === 0 && Array.isArray(child.material)) {
+                child.material[4].bumpMap = snackBumpTex; child.material[4].bumpScale = 0; 
+                child.material[5].bumpMap = snackBumpTex; child.material[5].bumpScale = 0; 
+            }
+        }
+    });
+    group.add(bagDestSingle);
+    
+    const colorDest = (isExplosion || isVacuum || isImpossible) ? "#dc2626" : "#059669";
+    drawCota(new THREE.Vector3(posDestino, 0, dDest/2), new THREE.Vector3(posDestino, 0, -dDest/2), dDest.toFixed(1) + "mm", colorDest, "x", 60);
+    const labelDestSingle = makeTextSprite(textDestino, colorDest);
+    labelDestSingle.position.set(posDestino, effH + 60, 0);
+    group.add(labelDestSingle);
+
+    const boxDestGroup = new THREE.Group();
+    boxDestGroup.position.set(offsetRight, 0, 0);
+    group.add(boxDestGroup);
+
+    const transMat = new THREE.MeshBasicMaterial({ color: 0xcd853f, transparent: true, opacity: 0.3, depthWrite: false });
+    const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(extL, extH, extW), transMat);
+    boxMesh.position.set(0, extH/2, 0);
+    const boxEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(extL, extH, extW)), new THREE.LineBasicMaterial({ color: 0x8b4513 }));
+    boxEdges.position.set(0, extH/2, 0);
+    boxDestGroup.add(boxMesh);
+    boxDestGroup.add(boxEdges);
+
+    const bagsInBox = [];
+    const totalPackL = (nx > 0) ? ((nx - 1) * effectiveBL + bL) : 0;
+    const startX = -(totalPackL / 2) + (bL / 2);
+    const startY = (effH / 2) + fluteT;
+
+    for(let i=0; i<nx; i++) {
+        for(let j=0; j<ny; j++) {
+            for(let k=0; k<nz; k++) {
+                const b = createBagMesh(bL, originalH, fold, dOrig);
+                b.userData = { i: i, j: j, k: k };
+                
+                b.children.forEach((child, index) => {
+                    if(child.material) {
+                        child.material = Array.isArray(child.material) ? child.material.map(m => m.clone()) : child.material.clone();
+                        if (index === 0 && Array.isArray(child.material)) {
+                            child.material[4].bumpMap = snackBumpTex; child.material[4].bumpScale = 0; 
+                            child.material[5].bumpMap = snackBumpTex; child.material[5].bumpScale = 0; 
+                        }
+                    }
+                });
+                
+                boxDestGroup.add(b);
+                bagsInBox.push(b);
+            }
+        }
+    }
+    
+    const labelDestBox = makeTextSprite("3. Lote en Caja", colorDest);
+    labelDestBox.position.set(offsetRight, Math.max(effH, extH) + 100, 0);
+    group.add(labelDestBox);
+
+    drawCota(new THREE.Vector3(offsetRight - extL/2, 0, extW/2), new THREE.Vector3(offsetRight + extL/2, 0, extW/2), extL.toFixed(0) + "mm", "#000000", "z", 80); 
+    drawCota(new THREE.Vector3(offsetRight + extL/2, 0, extW/2), new THREE.Vector3(offsetRight + extL/2, 0, -extW/2), extW.toFixed(0) + "mm", "#000000", "x", 80); 
+    drawCota(new THREE.Vector3(offsetRight - extL/2, 0, extW/2), new THREE.Vector3(offsetRight - extL/2, extH, extW/2), extH.toFixed(0) + "mm", "#000000", "x", -80); 
+    
+    const totalWidthDest = nz * dDest;
+    drawCota(new THREE.Vector3(offsetRight, extH + 20, totalWidthDest/2), new THREE.Vector3(offsetRight, extH + 20, -totalWidthDest/2), `Ocupación Z: ${totalWidthDest.toFixed(1)}mm`, colorDest, "x", 0);
+
+    const particlesSingle = new THREE.Group();
+    const particlesBox = new THREE.Group();
+    const particleGeo = new THREE.CylinderGeometry(2, 2, 18, 8); 
+    const particleMat = new THREE.MeshLambertMaterial({ color: 0xdc2626, roughness: 0.9 }); 
+    
+    for(let i = 0; i < 40; i++) {
+        const p = new THREE.Mesh(particleGeo, particleMat);
+        p.userData = { vx: (Math.random()-0.5)*180, vy: (i%2===0 ? 1 : -1)*(Math.random()*150+80), vz: (Math.random()-0.5)*180, rx: Math.random(), ry: Math.random(), rz: Math.random(), isTop: i%2===0 };
+        p.visible = false; particlesSingle.add(p);
+    }
+    particlesSingle.position.set(posDestino, effH/2, 0);
+    group.add(particlesSingle);
+
+    for(let i = 0; i < 80; i++) {
+        const p = new THREE.Mesh(particleGeo, particleMat);
+        p.userData = { vx: (Math.random()-0.5)*300, vy: (i%2===0 ? 1 : -1)*(Math.random()*200+100), vz: (Math.random()-0.5)*300, rx: Math.random(), ry: Math.random(), rz: Math.random(), isTop: i%2===0 };
+        p.visible = false; particlesBox.add(p);
+    }
+    particlesBox.position.set(offsetRight, extH/2, 0); group.add(particlesBox);
+
+    if (isExplosion || isVacuum || isImpossible) {
+        const alertCanvas = document.createElement('canvas'); 
+        alertCanvas.width = 800; alertCanvas.height = 200;
+        const alertCtx = alertCanvas.getContext('2d'); 
+        alertCtx.font = "bold 60px Arial"; 
+        alertCtx.textAlign = "center"; alertCtx.textBaseline = "middle";
+        alertCtx.fillStyle = "#dc2626"; 
+        let riskText = isImpossible ? "RUTA IMPOSIBLE DE EMBALAR" : (isBoxExplosion ? "ABOMBAMIENTO DE CAJA" : (isVacuum ? "VACÍO CRÍTICO" : "RUPTURA DE SELLOS"));
+        alertCtx.fillText(`⚠️ ${riskText} ⚠️`, 400, 100);
+        const alertSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(alertCanvas), depthTest: false }));
+        alertSprite.userData = { isCota: true, baseSX: 4.5, baseSY: 1.0 }; 
+        alertSprite.renderOrder = 10;
+        alertSprite.position.set(0, Math.max(effH, extH) + 180, 0); 
+        group.add(alertSprite);
+    }
+
+    const viewWidth = Math.abs(offsetRight - Math.min(posOrigen, posDestino)) + extL;
+    saveHomeView(new THREE.Vector3(0, Math.max(effH, extH) * 2.8, viewWidth * 0.8), new THREE.Vector3(0, extH/2, 0));
+    
+    let statusHtml = `<h4 style="margin: 0 0 10px 0; color: ${colorDest}; text-align: center; text-transform: uppercase;">⚠️ Simulación de Riesgo ⚠️</h4>`;
+    
+    if (isImpossible) {
+        statusHtml += `<span style="color: #dc2626;">❌ <b>FÍSICAMENTE IMPOSIBLE:</b> La caída de presión exige un colchón que rompería la caja actual.<br><b>⚙️ Acción Requerida:</b> Reduce el arreglo (Ej: de ${nz} a ${nz-1} bolsas) o cambia el item corrugado.</span>`;
+        resultDiv.style.borderLeft = "4px solid #dc2626"; resultDiv.style.background = "#fef2f2";
+    }
+    else if (isExplosion) {
+        let reason = isBoxExplosion ? `Romperá el espacio interno de la caja (${intW.toFixed(1)} mm).` : `Supera elongación del film (${bagPhysicalMax.toFixed(1)} mm).`;
+        statusHtml += `<span style="color: #dc2626;">💥 <b>Explosión/Abombamiento:</b> Crecerá un <b>${percentChange.toFixed(1)}%</b>. ${reason}<br><b>⚙️ Objetivo Nominal Sugerido en Planta: ${suggestedMax} mm</b>.</span>`;
+        resultDiv.style.borderLeft = "4px solid #dc2626"; resultDiv.style.background = "#fef2f2";
+    } 
+    else if (isVacuum) {
+        statusHtml += `<span style="color: #dc2626;">🧊 <b>Producto Trozado:</b> Se chupa un <b>${Math.abs(percentChange).toFixed(1)}%</b> rompiendo el colchón seguro de ${absoluteMinSafeDest.toFixed(1)} mm.<br><b>⚙️ Objetivo Nominal Sugerido en Planta: ${suggestedMin} mm</b>.</span>`;
+        resultDiv.style.borderLeft = "4px solid #dc2626"; resultDiv.style.background = "#fef2f2"; 
+    } 
+    else {
+        statusHtml = `<h4 style="margin: 0 0 10px 0; color: #059669; text-align: center; text-transform: uppercase;">✅ Tránsito Seguro ✅</h4><span style="color: #059669;">Volumen cambia <b>${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%</b>. Soporta perfectamente el viaje sin romper la caja ni trozar el producto.</span>`;
+        resultDiv.style.borderLeft = "4px solid #059669"; resultDiv.style.background = "#ecfdf5";
+    }
+    resultDiv.innerHTML = statusHtml; resultDiv.style.display = "block";
+
+    let progress = 0;
+    const targetScaleZ = dDest / dOrig;
+
+    const origSealsSingle = { topR: bagDestSingle.children[1].rotation.x, topY: bagDestSingle.children[1].position.y, botR: bagDestSingle.children[2].rotation.x, botY: bagDestSingle.children[2].position.y };
+    
+    function resetMaterials(bag) {
+        bag.children.forEach((c, index) => { 
+            if (c.material) {
+                let mats = Array.isArray(c.material) ? c.material : [c.material];
+                mats.forEach(m => { m.color.setHex(0xD3D3D3); m.roughness = 0.4; m.metalness = 0.7; if (index === 0) m.bumpScale = 0; });
+            }
+        });
+    }
+
+    function applyTensionMaterial(bag, tensionProgress) {
+        const currentColor = new THREE.Color(0xD3D3D3).lerp(new THREE.Color(0xff4444), tensionProgress);
+        bag.children.forEach(c => { 
+            if (c.material) {
+                let mats = Array.isArray(c.material) ? c.material : [c.material];
+                mats.forEach(m => m.color.copy(currentColor));
+            }
+        });
+    }
+
+    function applyVacuumMaterial(bag, ease) {
+        const currentColor = new THREE.Color(0xD3D3D3).lerp(new THREE.Color(0x8b0000), ease);
+        bag.children.forEach((c, index) => { 
+            if (c.material) {
+                let mats = Array.isArray(c.material) ? c.material : [c.material];
+                mats.forEach((m, mIdx) => {
+                    m.color.copy(currentColor);
+                    if (index === 0 && (mIdx === 4 || mIdx === 5)) {
+                        m.bumpScale = ease * 35; m.roughness = 0.4 + (0.4 * ease); m.metalness = 0.7 - (0.3 * ease);
+                    }
+                });
+            }
+        });
+    }
+
+    function popBag(bag, popProgress, seals) {
+        bag.children[0].scale.z = Math.max(0.1, 1 - popProgress); 
+        if (!isBoxExplosion) {
+            bag.children[1].position.y = seals.topY + (popProgress * 60); bag.children[1].rotation.x = seals.topR + (popProgress * Math.PI * 1.5); 
+            bag.children[2].position.y = seals.botY - (popProgress * 60); bag.children[2].rotation.x = seals.botR - (popProgress * Math.PI * 1.5);
+        }
+    }
+
+    function animateSimulation() {
+        progress += 0.0056; 
+        
+        if (progress > 1) {
+            progress = 0;
+            bagDestSingle.scale.set(1,1,1); bagDestSingle.children[0].scale.set(1,1,1);
+            bagDestSingle.children[1].position.set(0, origSealsSingle.topY, 0); bagDestSingle.children[1].rotation.set(origSealsSingle.topR, 0, 0);
+            bagDestSingle.children[2].position.set(0, origSealsSingle.botY, 0); bagDestSingle.children[2].rotation.set(origSealsSingle.botR, 0, 0);
+            resetMaterials(bagDestSingle);
+            
+            boxMesh.visible = true; boxEdges.visible = true;
+            boxMesh.scale.z = 1; boxEdges.scale.z = 1; 
+            bagsInBox.forEach(b => {
+                b.scale.set(1,1,1); b.children[0].scale.set(1,1,1);
+                b.children[1].position.set(0, origSealsSingle.topY, 0); b.children[1].rotation.set(origSealsSingle.topR, 0, 0);
+                b.children[2].position.set(0, origSealsSingle.botY, 0); b.children[2].rotation.set(origSealsSingle.botR, 0, 0);
+                resetMaterials(b);
+            });
+
+            particlesSingle.children.forEach(p => { p.visible = false; p.position.set(0,0,0); });
+            particlesBox.children.forEach(p => { p.visible = false; p.position.set(0,0,0); });
+        }
+
+        const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+        const currentScaleZ = 1 + (targetScaleZ - 1) * (progress < 0.85 || isVacuum ? ease : 1);
+
+        bagDestSingle.scale.z = currentScaleZ;
+        
+        const currentTotalWidth = nz * (dOrig * currentScaleZ);
+        const currentStartZ = -(currentTotalWidth / 2) + ((dOrig * currentScaleZ) / 2);
+        bagsInBox.forEach(b => {
+            b.scale.z = currentScaleZ;
+            b.position.x = startX + (b.userData.i * effectiveBL);
+            b.position.y = startY + (b.userData.j * effH);
+            b.position.z = currentStartZ + (b.userData.k * (dOrig * currentScaleZ));
+        });
+
+        if (isBoxExplosion && progress < 0.85) {
+            const overWidth = currentTotalWidth - intW;
+            if (overWidth > 0) {
+                const scaleW = 1 + (overWidth / extW);
+                boxMesh.scale.z = scaleW; boxEdges.scale.z = scaleW;
+            }
+        }
+
+        if (isExplosion) {
+            if (progress < 0.85) {
+                const tensionProgress = progress / 0.85;
+                applyTensionMaterial(bagDestSingle, tensionProgress);
+                bagsInBox.forEach(b => applyTensionMaterial(b, tensionProgress));
+            } else {
+                const popProgress = (progress - 0.85) / 0.15; 
+                popBag(bagDestSingle, popProgress, origSealsSingle);
+                bagsInBox.forEach(b => popBag(b, popProgress, origSealsSingle));
+
+                if (isBoxExplosion) {
+                    boxMesh.visible = false; boxEdges.visible = false; 
+                }
+
+                particlesSingle.children.forEach(p => {
+                    p.visible = true; p.position.x = p.userData.vx * popProgress;
+                    p.position.y = (p.userData.isTop ? effH * 0.4 : -effH * 0.4) + (p.userData.vy * popProgress) - (250 * popProgress * popProgress); 
+                    p.position.z = p.userData.vz * popProgress;
+                    p.rotation.x += p.userData.rx; p.rotation.y += p.userData.ry; p.rotation.z += p.userData.rz;
+                });
+                
+                particlesBox.children.forEach(p => {
+                    p.visible = true; p.position.x = p.userData.vx * popProgress;
+                    p.position.y = (p.userData.isTop ? extH/2 : -extH/2) + (p.userData.vy * popProgress) - (250 * popProgress * popProgress); 
+                    p.position.z = p.userData.vz * popProgress;
+                    p.rotation.x += p.userData.rx; p.rotation.y += p.userData.ry; p.rotation.z += p.userData.rz;
+                });
+            }
+        } 
+        else if (isVacuum) {
+            if (progress > 0.3) {
+                applyVacuumMaterial(bagDestSingle, ease);
+                bagsInBox.forEach(b => applyVacuumMaterial(b, ease));
+            }
+        }
+
+        simAnimFrame = requestAnimationFrame(animateSimulation);
+    }
+    animateSimulation(); 
+}
+// --- 🗺️ MOTOR GEOGRÁFICO Y SIMULADOR DE RUTAS ---
+window.transportFactor = 1; // Multiplicador de estrés dinámico
+window.humidityDecay = 1;   // Retención de BCT por humedad
+
+async function calculateRoute() {
+    // Tomamos los valores de los inputs de la sección de presión atmosférica
+    const orig = document.getElementById('altOrigenCity').value;
+    const dest = document.getElementById('altDestinoCity').value;
+    const resultDiv = document.getElementById('routeResult');
+    
+    if(!orig || !dest) return alert("Por favor ingresa Origen y Destino.");
+    
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = "⏳ <i>Triangulando coordenadas vía satélite...</i>";
+
+    try {
+        // Consultar API de OpenStreetMap (Gratuita)
+        let resO = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(orig)}`);
+        let dataO = await resO.json();
+        // Pausa de 1 segundo para no saturar la API gratuita
+        await new Promise(r => setTimeout(r, 1000));
+        let resD = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dest)}`);
+        let dataD = await resD.json();
+
+        if(dataO.length === 0 || dataD.length === 0) throw new Error("No se encontró la ciudad");
+
+        let lat1 = parseFloat(dataO[0].lat), lon1 = parseFloat(dataO[0].lon);
+        let lat2 = parseFloat(dataD[0].lat), lon2 = parseFloat(dataD[0].lon);
+
+        // Fórmula de Haversine para distancia en la esfera terrestre
+        const R = 6371; // Radio de la Tierra en km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distRecta = R * c;
+        const distKm = distRecta * 1.3; // Multiplicador promedio para caminos reales
+
+        // 🧠 Heurística Logística: Sugerencia de Transporte
+        // Si cruza el océano (más de 3500km o Europa/Asia), es marítimo.
+        let isMaritimo = distKm > 3500; 
+        
+        let mode = isMaritimo ? "🚢 Marítimo (Contenedor)" : "🚛 Terrestre (Tráiler/Tren)";
+        let risks = isMaritimo ? "Alta Humedad, Condensación, Balanceo (Roll/Pitch)" : "Baches, Frenado brusco, Vibración de Suspensión";
+        
+        // Castigos Estructurales (Física de Empaque)
+        window.transportFactor = isMaritimo ? 4 : 3; // El movimiento multiplica el peso que siente la caja base
+        window.humidityDecay = isMaritimo ? 0.5 : 0.8; // El mar pudre el cartón (pierde 50% de BCT)
+
+        resultDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom: 1px solid #1abc9c; padding-bottom: 4px;">
+                <b>📍 Distancia Terrestre Est.:</b> <span>~${distKm.toFixed(0)} km</span>
+            </div>
+            <b>Logística Sugerida:</b> <span style="color:#2980b9; font-weight:bold;">${mode}</span><br>
+            <b>Riesgos Dinámicos:</b> ${risks}<br>
+            <div style="margin-top:6px; font-size:11px; color:#e74c3c;">
+                <i>*Impacto aplicado: Fuerza x${window.transportFactor} | Retención Cartón: ${window.humidityDecay * 100}%</i>
+            </div>
+        `;
+        
+// Actualizar valores de BCT/ECT con la nueva ruta silenciosamente
+        if (generatedPatterns.length > 0) {
+            renderSelectedPattern(0); // Recalcula la resistencia aplicando humedad e impacto
+            
+            // Abrir el menú de resistencias automáticamente para mostrar los resultados
+            const btnRes = document.getElementById('btnAccordionResistencias');
+            const contentRes = document.getElementById('contentResistencias');
+            if (btnRes && !btnRes.classList.contains('active')) {
+                btnRes.classList.add('active');
+                contentRes.classList.add('show');
+            }
+        }       
+
+    } catch (e) {
+        resultDiv.innerHTML = "❌ <b>Error:</b> No pude encontrar una de las ciudades en el mapa. Intenta agregar el país (Ej: 'Monterrey, MX').";
+    }
+}
+// ==========================================
+// 🎬 MOTOR DE ANIMACIONES FÍSICAS Y PRUEBAS ISTA
+// ==========================================
+let isTilted = false, tiltDirection = 1;
+let isVibrating = false;
+let isFailingTilt = false; 
+let isFailingVibe = false; 
+let criticalTiltAngle = 0; 
+let stabilityMsgSprite = null;
+
+// --- 0. SUELO DE LABORATORIO (Se crea bajo demanda) ---
+let simFloor, gridHelper;
+function toggleFloor(show) {
+    if (!simFloor) {
+        // Piso sólido
+        simFloor = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), new THREE.MeshLambertMaterial({ color: 0xe2e8f0 }));
+        simFloor.rotation.x = -Math.PI / 2;
+        simFloor.position.y = -1; // Ligeramente abajo para evitar recortes
+        scene.add(simFloor);
+        
+        // Cuadrícula de laboratorio
+        gridHelper = new THREE.GridHelper(10000, 100, 0x94a3b8, 0xcbd5e1);
+        gridHelper.position.y = 0;
+        scene.add(gridHelper);
+    }
+    simFloor.visible = show;
+    gridHelper.visible = show;
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+
+    // --- 1. LÓGICA DE INCLINACIÓN (TILT) ---
+    if (typeof isTilted !== 'undefined' && isTilted) {
+        if (isFailingTilt) {
+            group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, (Math.PI / 2) * tiltDirection, 0.04);
+        } else {
+            const angleOSc = (Math.sin(Date.now() * 0.001) * 2) * (Math.PI / 180);
+            group.rotation.z = (15 * (Math.PI / 180) * tiltDirection) + angleOSc;
+        }
+        if (typeof stabilityMsgSprite !== 'undefined' && stabilityMsgSprite) {
+            stabilityMsgSprite.position.y = (group.userData.totalH || 1000) + 300;
+        }
+    } else if (typeof isTilted !== 'undefined' && group) {
+        group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, 0, 0.1);
+    }
+
+    // --- 2. LÓGICA DE VIBRACIÓN (VIBE) ---
+    if (typeof isVibrating !== 'undefined' && isVibrating) {
+        const time = Date.now() * 0.05;
+        const intensity = 3;
+        group.position.x = Math.sin(time) * intensity;
+
+        group.traverse(child => {
+            if (child.userData.isBox) {
+                const totalH = group.userData.totalH || 1500;
+                const heightFactor = Math.pow(child.userData.origY / totalH, 1.5);
+
+                if (isFailingVibe) {
+                    if (child.userData.origY > totalH * 0.4) {
+                        child.position.x += child.userData.vx;
+                        child.userData.vy -= 1.5; // Gravedad
+                        child.position.y += child.userData.vy;
+                        child.position.z += child.userData.vz;
+
+                        if (child.position.y < 120) {
+                            child.position.y = 120;
+                            child.userData.vy *= -0.3; // Rebote
+                            child.userData.vx *= 0.85; // Fricción
+                            child.userData.vz *= 0.85;
+                        }
+
+                        child.rotation.x += child.userData.vx * 0.01;
+                        child.rotation.z += child.userData.vz * 0.01;
+                    } else {
+                        child.position.x = child.userData.origX + Math.sin(time * 0.8 + child.userData.origY) * (intensity * 2) * heightFactor;
+                    }
+                } else {
+                    const wobble = Math.sin(time * 0.8) * (intensity * 4) * heightFactor;
+                    child.position.x = child.userData.origX + wobble;
+                }
+            }
+        });
+    } else if (typeof isVibrating !== 'undefined' && group) {
+        group.position.x = THREE.MathUtils.lerp(group.position.x, 0, 0.1);
+        group.traverse(child => {
+            if (child.userData.isBox) {
+                child.position.x = THREE.MathUtils.lerp(child.position.x, child.userData.origX, 0.1);
+                child.position.y = THREE.MathUtils.lerp(child.position.y, child.userData.origY, 0.1);
+                child.position.z = THREE.MathUtils.lerp(child.position.z, child.userData.origZ, 0.1);
+                child.rotation.x = THREE.MathUtils.lerp(child.rotation.x, 0, 0.1);
+                child.rotation.z = THREE.MathUtils.lerp(child.rotation.z, 0, 0.1);
+            }
+        });
+    }
+
+    // --- 3. ACTUALIZACIÓN DE ESCALA EN LAS COTAS ---
+    if (typeof cotasGroup !== 'undefined' && cotasGroup.visible) {
+        const dist = camera.position.distanceTo(controls.target);
+        const scaleFactor = Math.max(0.15, dist * 0.08);
+        cotasGroup.children.forEach(child => {
+            if (child.isSprite && child.userData.isCota) {
+                child.scale.set(scaleFactor * child.userData.baseSX, scaleFactor * child.userData.baseSY, 1);
+            }
+        });
+    }
+
+    renderer.render(scene, camera);
+}
+
+// --- 2. FUNCIONES DE CONTROL Y VEREDICTO ISTA ---
+
+function stopAllSims() {
+    isTilted = false; isVibrating = false;
+    isFailingTilt = false; isFailingVibe = false;
+    toggleFloor(false); // Ocultar el suelo de laboratorio
+    if (stabilityMsgSprite) { group.remove(stabilityMsgSprite); stabilityMsgSprite = null; }
+    resetView(); 
+}
+
+// ⚖️ SIMULADOR DE INCLINACIÓN (TILT) - ISTA 1A / 3A
+function startTiltSim() {
+    stopAllSims();
+    toggleFloor(true); // Encender suelo
+    
+    saveHomeView(new THREE.Vector3(0, (group.userData.totalH || 1000) * 0.8, (group.userData.totalPL || 1200) * 2.5), new THREE.Vector3(0, (group.userData.totalH || 1000) * 0.4, 0));
+
+    const pH = parseFloat(document.getElementById('palH').value) || 150;
+    const pat = generatedPatterns[0]; 
+    if (!pat) return alert("Primero optimiza la tarima.");
+    
+    const doubleStack = document.getElementById('doubleStack') && document.getElementById('doubleStack').checked;
+    const numPallets = doubleStack ? 2 : 1;
+    const loadH = pat.layers * pat.orient.dy;
+    const totalH = (pH + loadH) * numPallets;
+    
+    const cgY = totalH / 2; // Centro de gravedad
+    const baseWidth = Math.min(parseFloat(document.getElementById('palL').value), parseFloat(document.getElementById('palW').value));
+    
+    // Ángulo crítico de vuelco
+    const semiBase = baseWidth / 2;
+    criticalTiltAngle = Math.atan2(semiBase, cgY) * (180 / Math.PI);
+
+    group.userData.totalH = totalH;
+    group.userData.totalPL = baseWidth;
+
+    const testAngle = 15; // Norma ISTA
+    isFailingTilt = testAngle > criticalTiltAngle; 
+    
+    const color = isFailingTilt ? "#dc2626" : "#059669";
+    const bgResult = isFailingTilt ? "#fef2f2" : "#ecfdf5";
+    const msg = isFailingTilt ? `❌ FALLO ISTA 1A (Vuelco Inminente)` : `✅ PASA ISTA 1A (Estabilidad Aprobada)`;
+    const sugerencia = isFailingTilt ? `💡 <b>Causa:</b> Centro de Gravedad muy alto (Volcará a los ${criticalTiltAngle.toFixed(1)}°).<br><b>Acción:</b> Reduce camas por tarima, elimina la doble estiba, o cambia a tarima más ancha.` : `💡 Centro de gravedad estable. Soporta balanceo marítimo/terrestre hasta ${criticalTiltAngle.toFixed(1)}° sin volcar.`;
+    
+    stabilityMsgSprite = makeTextSprite(isFailingTilt ? "¡COLAPSO!" : "ESTABLE", color);
+    stabilityMsgSprite.position.set(0, totalH + 300, 0);
+    stabilityMsgSprite.userData = { isCota: true, baseSX: 3, baseSY: 1.2 };
+    group.add(stabilityMsgSprite);
+
+    const resultDiv = document.getElementById('routeResult');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = bgResult;
+    resultDiv.style.borderLeftColor = color;
+    resultDiv.innerHTML = `<h4 style="margin:0 0 5px 0; color:${color};">${msg}</h4><span style="font-size:12px;">${sugerencia}</span>`;
+
+    isTilted = true;
+    tiltDirection *= -1; 
+}
+
+// 📳 SIMULADOR DE VIBRACIÓN - ISTA 2A / 3A
+function startVibeSim() {
+    stopAllSims();
+    toggleFloor(true); // Encender suelo
+    
+    const pH = parseFloat(document.getElementById('palH').value) || 150;
+    const pat = generatedPatterns[0]; 
+    if (!pat) return alert("Primero optimiza la tarima.");
+    
+    const doubleStack = document.getElementById('doubleStack') && document.getElementById('doubleStack').checked;
+    const numPallets = doubleStack ? 2 : 1;
+    const loadH = pat.layers * pat.orient.dy;
+    group.userData.totalH = (pH + loadH) * numPallets;
+
+    saveHomeView(new THREE.Vector3(-(group.userData.totalPL || 1200), group.userData.totalH*1.2, (group.userData.totalPL || 1200)*1.5), new THREE.Vector3(0, group.userData.totalH*0.4, 0));
+
+    // Veredicto: Sin playo = Desastre vibratorio
+    const hasPlayo = document.getElementById('usePlayo').checked;
+    isFailingVibe = !hasPlayo; 
+
+    // --- PREPARAR CAJAS INDIVIDUALES PARA CAÍDA (FÍSICAS) ---
+    // Buscar el grupo de carga (el que tiene muchas cajas adentro)
+    let loadGroup = group.children.find(c => c.type === 'Group' && c.children.length > 2);
+    if (!loadGroup) {
+        // Respaldo por si no lo encuentra por condición
+        loadGroup = group.children.reduce((prev, current) => (prev.children.length > current.children.length) ? prev : current);
+    }
+
+    if (loadGroup) {
+        loadGroup.children.forEach(box => {
+            // Etiquetar y guardar posiciones de origen para poder resetearlas
+            if (box.userData.origY === undefined) {
+                box.userData.origX = box.position.x;
+                box.userData.origY = box.position.y;
+                box.userData.origZ = box.position.z;
+            }
+            // Asignar fuerzas explosivas aleatorias para la caída
+            box.userData.vx = (Math.random() - 0.5) * 18; // Expansión lateral X
+            box.userData.vy = Math.random() * 8 + 8;      // Salto hacia arriba (antes de caer)
+            box.userData.vz = (Math.random() - 0.5) * 18; // Expansión lateral Z
+            box.userData.isBox = true; 
+        });
+    }
+
+    const color = isFailingVibe ? "#d97706" : "#059669";
+    const bgResult = isFailingVibe ? "#fffbeb" : "#ecfdf5";
+    const msg = isFailingVibe ? `⚠️ FALLO ISTA 2A (Derrame de Carga)` : `✅ PASA ISTA 2A (Contención Óptima)`;
+    const sugerencia = isFailingVibe ? `💡 <b>Causa:</b> Fricción insuficiente bajo resonancia. Las cajas superiores rebotan y se desparraman.<br><b>Acción:</b> Activa "Aplicar Película (Playo)" en logística para amarrar la carga.` : `💡 La película stretch proporciona tensión estructural suficiente para tolerar la resonancia del transporte.`;
+
+    stabilityMsgSprite = makeTextSprite(isFailingVibe ? "DESMORONAMIENTO" : "CARGA SEGURA", color);
+    stabilityMsgSprite.position.set(0, group.userData.totalH + 300, 0);
+    stabilityMsgSprite.userData = { isCota: true, baseSX: 4, baseSY: 1.2 };
+    group.add(stabilityMsgSprite);
+
+    const resultDiv = document.getElementById('routeResult');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = bgResult;
+    resultDiv.style.borderLeftColor = color;
+    resultDiv.innerHTML = `<h4 style="margin:0 0 5px 0; color:${color};">${msg}</h4><span style="font-size:12px;">${sugerencia}</span>`;
+
+    isVibrating = true;
+}
+
+// --- ⛰️ BUSCADOR AUTOMÁTICO DE ALTITUD ---
+async function fetchAltitude(cityInputId, altInputId) {
+    const cityQuery = document.getElementById(cityInputId).value;
+    const altInput = document.getElementById(altInputId);
+    
+    if (!cityQuery || cityQuery.trim() === "") return;
+
+    altInput.value = "Buscando...";
+
+    try {
+        // 1. Primero, convertimos el nombre de la ciudad a coordenadas (Lat/Lon)
+        let resGeo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}`);
+        let dataGeo = await resGeo.json();
+        
+        if(dataGeo.length === 0) {
+            altInput.value = "Error: No hallada";
+            return;
+        }
+
+        let lat = dataGeo[0].lat;
+        let lon = dataGeo[0].lon;
+
+        // 2. Ahora, usamos las coordenadas para pedir la elevación (Altitud)
+        let resAlt = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
+        let dataAlt = await resAlt.json();
+        
+        if (dataAlt.elevation && dataAlt.elevation.length > 0) {
+            // Ponemos el número redondo en el campo
+            altInput.value = Math.round(dataAlt.elevation[0]); 
+            
+            // Opcional: Mostrar un mensaje visual rápido de éxito (Toast)
+            let resultDiv = document.getElementById('pressureResult');
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#e8f8f5';
+            resultDiv.style.borderLeft = '4px solid #1abc9c';
+            resultDiv.innerHTML = `✅ <b>Altitud encontrada:</b> ${cityQuery} está a ~${Math.round(dataAlt.elevation[0])} msnm.`;
+            setTimeout(() => { if(!simAnimFrame) resultDiv.style.display = 'none'; }, 3000); // Ocultar tras 3 segundos
+            
+        } else {
+            altInput.value = "Error API";
+        }
+
+    } catch (error) {
+        console.error("Error al buscar altitud:", error);
+        altInput.value = "Fallo de Red";
+    }
+}
+
+// --- FUNCIÓN FALTANTE: SUGERIR MEJOR CAJA ---
+function suggestBestBox() {
+    alert("🚀 ¡Spark está analizando la mejor caja! (Función en desarrollo...)");
+    // Aquí irá tu lógica de IA para sugerir la caja ideal
+    
+    // Por ahora, solo ponemos valores de ejemplo para que no de error
+    document.getElementById('boxL').value = 400;
+    document.getElementById('boxW').value = 300;
+    document.getElementById('boxH').value = 250;
+    updateInternalDimensions();
+    
+    if (typeof buildSingleBox === 'function') {
+        buildSingleBox();
+    }
+}
+
+// --- 🛠️ MOTOR DE INGENIERÍA INVERSA ---
+function generatePerfectBox() {
+    const bL = parseFloat(document.getElementById('bagL').value); 
+    const bD = parseFloat(document.getElementById('bagDMax').value) || parseFloat(document.getElementById('bagDMin').value); 
+    const originalH = parseFloat(document.getElementById('bagH').value);
+    
+    if(isNaN(bL) || isNaN(bD) || isNaN(originalH)) {
+        return alert("⚠️ Por favor, selecciona una marca y gramaje primero para conocer las medidas del producto.");
+    }
+
+    const foldAmount = parseFloat(document.getElementById('bagFold').value) || 0;
+    const compL = parseFloat(document.getElementById('bagCompL').value) || 0;
+    const compD = parseFloat(document.getElementById('bagCompD').value) || 0;
+    
+    const effectiveBH = originalH - foldAmount; 
+    const effectiveBL = bL * (1 - (compL / 100)); 
+    const effectiveBD = bD * (1 - (compD / 100));
+
+    const invX = parseInt(document.getElementById('invX').value) || 1;
+    const invY = parseInt(document.getElementById('invY').value) || 1;
+    const invZ = parseInt(document.getElementById('invZ').value) || 1;
+
+    const fluteT = parseFloat(document.getElementById('boxFlute').value) || 2.70;
+
+    // 1. Calcular el interior exacto para no tener espacio muerto
+    const intL = invX * effectiveBL;
+    const intH = invY * effectiveBH;
+    const intW = invZ * effectiveBD;
+
+    // 2. Sumar la tolerancia y calibres de las paredes del corrugado
+    const tolerancia = 2; // 2mm de juego para que el producto entre bien
+    const extL = intL + (2 * fluteT) + tolerancia;
+    const extW = intW + (2 * fluteT) + tolerancia;
+    const extH = intH + (4 * fluteT) + tolerancia; // 4 grosores (2 solapas arriba, 2 abajo)
+
+    // 3. Forzar los valores en la interfaz
+    document.getElementById('boxL').value = Math.ceil(extL);
+    document.getElementById('boxW').value = Math.ceil(extW);
+    document.getElementById('boxH').value = Math.ceil(extH);
+    
+    updateInternalDimensions();
+    
+    // 4. Renderizar el nuevo modelo
+    document.getElementById('boxViewType').value = 'diagonal';
+    buildBagsInBox();
+
+    // Añadir alerta visual de éxito
+    const results = document.getElementById('results');
+    results.innerHTML = `<span style="color:#27ae60;">✅ <b>¡Caja Perfecta Diseñada! (Espacio Muerto Mínimo)</b></span><br>` + results.innerHTML;
+}
+</script>
+</body>
+</html>

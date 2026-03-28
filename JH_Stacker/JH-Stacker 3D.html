@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JH-Stacker 3D: Sistema de Simulación de Empaque y Logística</title>
+    <style>
+        :root {
+            --color-primario: #2c3e50;
+            --color-acento: #3498db;
+            --fondo-oscuro: #1e1e1e;
+            --texto-claro: #ecf0f1;
+            --ancho-panel: 440px;
+        }
+        body {
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--fondo-oscuro); color: var(--texto-claro);
+            display: flex; height: 100vh; overflow: hidden;
+        }
+        
+        /* Panel Lateral de Parámetros Físicos */
+        #panel-lateral {
+            width: var(--ancho-panel); background: #2a2a2a; border-right: 1px solid #444;
+            display: flex; flex-direction: column; z-index: 10;
+        }
+        #encabezado {
+            padding: 15px; background: #222; text-align: center; border-bottom: 1px solid #444;
+        }
+        #encabezado h1 { margin: 0; font-size: 1.2rem; color: var(--color-acento); }
+        
+        /* Tríada Restrictiva de Navegación */
+        #iconos-navegacion {
+            display: flex; justify-content: space-around; padding: 10px 0;
+            background: #333; border-bottom: 1px solid #555;
+        }
+       .btn-navegacion {
+            background: none; border: none; font-size: 1.5rem; cursor: pointer;
+            color: #888; transition: all 0.3s ease; padding: 10px 20px;
+        }
+       .btn-navegacion.activo { color: var(--color-acento); border-bottom: 3px solid var(--color-acento); }
+       .btn-navegacion:hover { color: #fff; }
+
+        /* Contenedores de Datos Dinámicos */
+       .contenedor-datos { display: none; padding: 20px; overflow-y: auto; flex-grow: 1; }
+       .contenedor-datos.activo { display: block; }
+        
+       .grupo-input { margin-bottom: 15px; }
+       .grupo-input label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #ccc; }
+       .grupo-input input,.grupo-input select {
+            width: 100%; padding: 8px; box-sizing: border-box; background: #1a1a1a;
+            border: 1px solid #555; color: #fff; border-radius: 4px;
+        }
+       .grupo-input input[type="checkbox"] { width: auto; margin-right: 10px; }
+        
+        /* Entorno de Visualización Tridimensional WebGL */
+        #visor-3d { flex-grow: 1; position: relative; background: #111; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+       .btn-accion {
+            width: 100%; padding: 12px; background: var(--color-acento); color: white;
+            border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+            margin-top: 10px; transition: background 0.3s;
+        }
+       .btn-accion:hover { background: #2980b9; }
+
+       .input-bloqueado { background: #0a0a0a!important; color: #7f8c8d!important; cursor: not-allowed; }
+        
+       .fila { display: flex; gap: 10px; }
+       .columna { flex: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="panel-lateral">
+        <div id="encabezado">
+            <h1>JH-STACKER: Motor Analítico</h1>
+        </div>
+
+        <div id="iconos-navegacion">
+            <button class="btn-navegacion activo" id="btn-bolsa" title="Bolsas Flexibles">🛍️</button>
+            <button class="btn-navegacion" id="btn-caja" title="Cartón Corrugado">📦</button>
+            <button class="btn-navegacion" id="btn-pallet" title="Palletización">🎯</button>
+        </div>
+
+        <div id="panel-bolsa" class="contenedor-datos activo">
+            <h3 style="margin-top:0;">Topología de Bolsa Flexible</h3>
+            
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Largo Exterior (mm)</label>
+                        <input type="number" id="bolsa-ext-l" value="250" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Ancho Exterior (mm)</label>
+                        <input type="number" id="bolsa-ext-w" value="150" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Alto Exterior Total (mm)</label>
+                        <input type="number" id="bolsa-ext-h" value="300" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Inflado Volumétrico (mm)</label>
+                        <input type="number" id="bolsa-inflado" value="45" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: #444; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:#aaa;">Dinámica de Sellado Termoplástico</h4>
+
+            <div class="grupo-input">
+                <label>Tamaño de Sellos (Sup/Inf Simétrico) (mm)</label>
+                <input type="number" id="bolsa-tamano-sello" value="15" onchange="renderizarBolsa()">
+            </div>
+            
+            <div class="grupo-input">
+                <label style="display: flex; align-items: center;">
+                    <input type="checkbox" id="bolsa-doblar-sellos" onchange="renderizarBolsa()"> 
+                    Sellos que se doblan (Reducción de huella)
+                </label>
+            </div>
+
+            <hr style="border-color: #444; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:#aaa;">Algoritmo de Compresión por Estiba</h4>
+            
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Compresión Largo (%)</label>
+                        <input type="number" id="bolsa-comp-l" value="2" min="0" max="100" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Compresión Ancho (%)</label>
+                        <input type="number" id="bolsa-comp-w" value="5" min="0" max="100" onchange="renderizarBolsa()">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-accion" onclick="renderizarBolsa()">👁️ Renderizar Polímero</button>
+        </div>
+
+        <div id="panel-caja" class="contenedor-datos">
+            <h3 style="margin-top:0;">Estructura de Cartón Corrugado</h3>
+
+            <div class="grupo-input">
+                <label>Perfil Estructural de Flauta</label>
+                <select id="caja-flauta" onchange="calcularDimensionesInteriores()">
+                    <option value="1.0">Flauta F (1.0 mm) - Extra Fina</option>
+                    <option value="1.5">Flauta E (1.5 mm) - Fina / Troquelados</option>
+                    <option value="3.0">Flauta B (3.0 mm) - Versátil / Soporte</option>
+                    <option value="4.0" selected>Flauta C (4.0 mm) - Estándar Transporte</option>
+                    <option value="5.0">Flauta A (5.0 mm) - Amortiguación</option>
+                    <option value="4.5">Flauta EB (4.5 mm) - Doble Pared</option>
+                    <option value="7.0">Flauta BC (7.0 mm) - Doble Pared Pesada</option>
+                </select>
+            </div>
+
+            <hr style="border-color: #444; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:#aaa;">Restricción Dimensional Exterior (mm)</h4>
+
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Largo (L)</label>
+                        <input type="number" id="caja-ext-l" value="400" onchange="calcularDimensionesInteriores()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Ancho (W)</label>
+                        <input type="number" id="caja-ext-w" value="300" onchange="calcularDimensionesInteriores()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Alto (H)</label>
+                        <input type="number" id="caja-ext-h" value="250" onchange="calcularDimensionesInteriores()">
+                    </div>
+                </div>
+            </div>
+
+            <h4 style="margin:0 0 10px 0; color:#acb038;">Volumen Interior Útil (Cálculo Automático)</h4>
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Largo Int.</label>
+                        <input type="number" id="caja-int-l" class="input-bloqueado" readonly>
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Ancho Int.</label>
+                        <input type="number" id="caja-int-w" class="input-bloqueado" readonly>
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Alto Int.</label>
+                        <input type="number" id="caja-int-h" class="input-bloqueado" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: #444; margin: 15px 0;">
+            <h4 style="margin:0 0 10px 0; color:#aaa;">Mecánica de Sellado (Cinta Transparente)</h4>
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Ancho Adhesivo (mm)</label>
+                        <input type="number" id="cinta-ancho" value="48" onchange="renderizarCaja()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Caída Lateral Adhesivo (mm)</label>
+                        <input type="number" id="cinta-caida" value="50" onchange="renderizarCaja()">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-accion" onclick="renderizarCaja()">📦 Visualizar Sellado Estructural</button>
+        </div>
+
+        <div id="panel-pallet" class="contenedor-datos">
+            <h3 style="margin-top:0;">Matriz Estructural de Palletización</h3>
+
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Longitud Base (mm)</label>
+                        <input type="number" id="pal-l" value="1200" onchange="renderizarPallet()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Anchura Base (mm)</label>
+                        <input type="number" id="pal-w" value="1000" onchange="renderizarPallet()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="fila">
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Elevación Madera (mm)</label>
+                        <input type="number" id="pal-h" value="145" onchange="renderizarPallet()">
+                    </div>
+                </div>
+                <div class="columna">
+                    <div class="grupo-input">
+                        <label>Voladizo Máximo (mm)</label>
+                        <input type="number" id="pal-voladizo" value="20" onchange="renderizarPallet()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grupo-input">
+                <label>Umbral Máximo de Apilamiento (mm)</label>
+                <input type="number" id="pal-max-h" value="2400" onchange="renderizarPallet()">
+            </div>
+
+            <button class="btn-accion" onclick="renderizarPallet()">🎯 Generar Teselación Tridimensional</button>
+        </div>
+    </div>
+
+    <div id="visor-3d"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- CONTROLADOR DE FLUJO DE ESTADO UI ---
+        const modulos = ['bolsa', 'caja', 'pallet'];
+        modulos.forEach(modulo => {
+            document.getElementById(`btn-${modulo}`).addEventListener('click', () => {
+                modulos.forEach(m => {
+                    document.getElementById(`btn-${m}`).classList.remove('activo');
+                    document.getElementById(`panel-${m}`).classList.remove('activo');
+                });
+                document.getElementById(`btn-${modulo}`).classList.add('activo');
+                document.getElementById(`panel-${modulo}`).classList.add('activo');
+                
+                // Ejecución algorítmica condicionada a la tabulación activa
+                if(modulo === 'bolsa') renderizarBolsa();
+                if(modulo === 'caja') { calcularDimensionesInteriores(); renderizarCaja(); }
+                if(modulo === 'pallet') renderizarPallet();
+            });
+        });
+
+        // --- INICIALIZACIÓN DE MOTOR FÍSICO Y GRÁFICO ---
+        const visor = document.getElementById('visor-3d');
+        const escena = new THREE.Scene();
+        escena.background = new THREE.Color(0x1a1a1a);
+        
+        // Emulación Fotométrica Global para Materiales PBR
+        const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.6);
+        escena.add(luzAmbiente);
+        const luzDireccional = new THREE.DirectionalLight(0xffffff, 0.85);
+        luzDireccional.position.set(10, 20, 10);
+        escena.add(luzDireccional);
+        const luzRelleno = new THREE.DirectionalLight(0xffffff, 0.25);
+        luzRelleno.position.set(-10, -10, -10);
+        escena.add(luzRelleno);
+
+        const camara = new THREE.PerspectiveCamera(45, visor.clientWidth / visor.clientHeight, 1, 15000);
+        camara.position.set(600, 600, 600);
+
+        const renderizador = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderizador.setSize(visor.clientWidth, visor.clientHeight);
+        renderizador.setPixelRatio(window.devicePixelRatio);
+        visor.appendChild(renderizador.domElement);
+
+        const orbitador = new THREE.OrbitControls(camara, renderizador.domElement);
+        orbitador.enableDamping = true;
+        orbitador.dampingFactor = 0.05;
+
+        // Bucle de Renderizado de Alta Frecuencia
+        function animar() {
+            requestAnimationFrame(animar);
+            orbitador.update();
+            renderizador.render(escena, camara);
+        }
+        animar();
+
+        window.addEventListener('resize', () => {
+            camara.aspect = visor.clientWidth / visor.clientHeight;
+            camara.updateProjectionMatrix();
+            renderizador.setSize(visor.clientWidth, visor.clientHeight);
+        });
+
+        function limpiarEscena() {
+            while(escena.children.length > 0){ 
+                escena.remove(escena.children); 
+            }
+            escena.add(luzAmbiente);
+            escena.add(luzDireccional);
+            escena.add(luzRelleno);
+        }
+
+        // --- RUTINA 1: CÁLCULO FÍSICO Y RENDER DE BOLSAS ---
+        function renderizarBolsa() {
+            limpiarEscena();
+            
+            // Extracción de datos dimensionales y termoplásticos
+            let altoExterior = parseFloat(document.getElementById('bolsa-ext-h').value);
+            let largoExterior = parseFloat(document.getElementById('bolsa-ext-l').value);
+            let anchoExterior = parseFloat(document.getElementById('bolsa-ext-w').value);
+            let infladoMaximo = parseFloat(document.getElementById('bolsa-inflado').value);
+            let dimensionSello = parseFloat(document.getElementById('bolsa-tamano-sello').value);
+            let sellosPlegados = document.getElementById('bolsa-doblar-sellos').checked;
+            
+            // Índices de Deformación Viscoelástica
+            let compresionL = parseFloat(document.getElementById('bolsa-comp-l').value) / 100;
+            let compresionW = parseFloat(document.getElementById('bolsa-comp-w').value) / 100;
+
+            // Restricción Topológica del Sello Termoplástico
+            // El alto total de la bolsa en planta asume la magnitud pura introducida.
+            let longitudEfectiva = altoExterior; 
+            if (sellosPlegados) {
+                // Si la bolsa se dobla, reducimos espacialmente las extremidades rígidas
+                longitudEfectiva = altoExterior - (dimensionSello * 2); 
+            }
+            
+            // Expansión Poisson Análoga por carga vertical
+            let magnitudLFinal = longitudEfectiva + (longitudEfectiva * compresionL);
+            let magnitudWFinal = anchoExterior + (anchoExterior * compresionW);
+            let magnitudZFinal = infladoMaximo; // Vector de profundidad Z
+
+            // Renderizado Basado en Física (PBR) - Gris Metálico Estándar sin texturas externas
+            const materialPolimero = new THREE.MeshStandardMaterial({
+                color: 0x8a8d8f, // Tonalidad base Mylar aluminizado
+                metalness: 0.85,  // Reflectancia electrónica elevada
+                roughness: 0.35,  // Microabrasiones superficiales difusoras
+                side: THREE.DoubleSide
+            });
+
+            // Configuración Geométrica (Extrapolación a Prismas Delimitadores)
+            const geometria = new THREE.BoxGeometry(magnitudLFinal, magnitudZFinal, magnitudWFinal);
+            const mallaBolsa = new THREE.Mesh(geometria, materialPolimero);
+            
+            const contornos = new THREE.EdgesGeometry(geometria);
+            const lineas = new THREE.LineSegments(contornos, new THREE.LineBasicMaterial({ color: 0x555555 }));
+            mallaBolsa.add(lineas);
+
+            escena.add(mallaBolsa);
+            
+            orbitador.target.set(0, 0, 0);
+            camara.position.set(magnitudLFinal * 1.5, magnitudZFinal * 3.5, magnitudWFinal * 1.5);
+        }
+
+        // --- RUTINA 2: CÁLCULO VOLUMÉTRICO Y SELLADO DE CORRUGADO ---
+        function calcularDimensionesInteriores() {
+            let dimL = parseFloat(document.getElementById('caja-ext-l').value);
+            let dimW = parseFloat(document.getElementById('caja-ext-w').value);
+            let dimH = parseFloat(document.getElementById('caja-ext-h').value);
+            let espesorEstructural = parseFloat(document.getElementById('caja-flauta').value);
+
+            // Reducción volumétrica dictaminada por paredes opuestas (2x) del perfil ondulado
+            let interiorL = dimL - (2 * espesorEstructural);
+            let interiorW = dimW - (2 * espesorEstructural);
+            let interiorH = dimH - (2 * espesorEstructural);
+
+            // Actualización de DOM - Restricción Espacial Libre para Algoritmos Terciarios
+            document.getElementById('caja-int-l').value = interiorL.toFixed(1);
+            document.getElementById('caja-int-w').value = interiorW.toFixed(1);
+            document.getElementById('caja-int-h').value = interiorH.toFixed(1);
+        }
+
+        function renderizarCaja() {
+            limpiarEscena();
+            calcularDimensionesInteriores();
+
+            let dimL = parseFloat(document.getElementById('caja-ext-l').value);
+            let dimW = parseFloat(document.getElementById('caja-ext-w').value);
+            let dimH = parseFloat(document.getElementById('caja-ext-h').value);
+            let anchoCinta = parseFloat(document.getElementById('cinta-ancho').value);
+            let caidaLateral = parseFloat(document.getElementById('cinta-caida').value);
+
+            // Materialidad del Papel Kraft (Baja Reflectancia y Alta Rugosidad)
+            const materialKraft = new THREE.MeshStandardMaterial({
+                color: 0xc4a47c,
+                roughness: 0.95,
+                metalness: 0.05
+            });
+
+            const geometriaCaja = new THREE.BoxGeometry(dimL, dimH, dimW);
+            const mallaCaja = new THREE.Mesh(geometriaCaja, materialKraft);
+            
+            const bordesCaja = new THREE.EdgesGeometry(geometriaCaja);
+            const aristasCaja = new THREE.LineSegments(bordesCaja, new THREE.LineBasicMaterial({ color: 0x5e4526 }));
+            mallaCaja.add(aristasCaja);
+
+            escena.add(mallaCaja);
+
+            // Mecánica de Superposición WebGL para la Cinta Transparente (Evasión de Z-Fighting)
+            const agrupacionCinta = new THREE.Group();
+
+            const materialAdhesivo = new THREE.MeshStandardMaterial({
+                color: 0xffffff, // Dispersión cromática neutra
+                transparent: true,
+                opacity: 0.60, // Factor de refracción del polímero
+                roughness: 0.2, // Textura lisa tipo acrílico
+                depthWrite: false, // Prevención absoluta de fractura geométrica coplanar
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
+            });
+
+            // Vector longitudinal superior cubriendo la convergencia de las solapas
+            const geometriaCintaSuperior = new THREE.PlaneGeometry(dimL, anchoCinta);
+            const mallaCintaSup = new THREE.Mesh(geometriaCintaSuperior, materialAdhesivo);
+            mallaCintaSup.rotation.x = -Math.PI / 2;
+            mallaCintaSup.position.y = (dimH / 2) + 0.1; // Desplazamiento micro-paramétrico preventivo
+            agrupacionCinta.add(mallaCintaSup);
+
+            // Vectores perpendiculares de sujeción (Caídas Laterales)
+            if (caidaLateral > 0) {
+                const geometriaCaida = new THREE.PlaneGeometry(caidaLateral, anchoCinta);
+                
+                // Anclaje Cara Trasera (Solapamiento Z)
+                const solapa1 = new THREE.Mesh(geometriaCaida, materialAdhesivo);
+                solapa1.rotation.y = -Math.PI / 2;
+                solapa1.rotation.z = Math.PI / 2;
+                solapa1.position.x = (dimL / 2) + 0.1;
+                solapa1.position.y = (dimH / 2) - (caidaLateral / 2);
+                agrupacionCinta.add(solapa1);
+
+                // Anclaje Cara Frontal (Solapamiento Z Negativo)
+                const solapa2 = new THREE.Mesh(geometriaCaida, materialAdhesivo);
+                solapa2.rotation.y = Math.PI / 2;
+                solapa2.rotation.z = Math.PI / 2;
+                solapa2.position.x = -(dimL / 2) - 0.1;
+                solapa2.position.y = (dimH / 2) - (caidaLateral / 2);
+                agrupacionCinta.add(solapa2);
+            }
+
+            escena.add(agrupacionCinta);
+
+            orbitador.target.set(0, 0, 0);
+            camara.position.set(dimL * 1.3, dimH * 1.6, dimW * 1.3);
+        }
+
+        // --- RUTINA 3: ALGORITMIA TERCIARIA Y TESELACIÓN (INALTERADA) ---
+        function renderizarPallet() {
+            limpiarEscena();
+
+            let baseL = parseFloat(document.getElementById('pal-l').value);
+            let baseW = parseFloat(document.getElementById('pal-w').value);
+            let baseH = parseFloat(document.getElementById('pal-h').value);
+            let margenVoladizo = parseFloat(document.getElementById('pal-voladizo').value);
+
+            // Representación Base del Medio de Distribución (Madera)
+            const materialPlataforma = new THREE.MeshStandardMaterial({
+                color: 0xdeb887,
+                roughness: 1.0,
+                metalness: 0.0
+            });
+
+            const geometriaPallet = new THREE.BoxGeometry(baseL, baseH, baseW);
+            const mallaPallet = new THREE.Mesh(geometriaPallet, materialPlataforma);
+            
+            const contornosMadera = new THREE.EdgesGeometry(geometriaPallet);
+            const aristasMadera = new THREE.LineSegments(contornosMadera, new THREE.LineBasicMaterial({ color: 0x8b4513 }));
+            mallaPallet.add(aristasMadera);
+
+            // Delimitación Espacial de Proyección en Voladizo (Zonificación Visual Restrictiva)
+            const limiteVirtualGeometria = new THREE.PlaneGeometry(baseL + (margenVoladizo * 2), baseW + (margenVoladizo * 2));
+            const limiteVirtualMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            const mallaLimite = new THREE.Mesh(limiteVirtualGeometria, limiteVirtualMaterial);
+            mallaLimite.rotation.x = -Math.PI / 2;
+            mallaLimite.position.y = - (baseH / 2) + 0.5;
+            escena.add(mallaLimite);
+
+            escena.add(mallaPallet);
+
+            orbitador.target.set(0, 0, 0);
+            camara.position.set(baseL * 1.5, baseH * 5, baseW * 1.5);
+        }
+        
+        // Disparador de Inicialización del Flujo
+        calcularDimensionesInteriores();
+        renderizarBolsa();
+    </script>
+</body>
+</html>
